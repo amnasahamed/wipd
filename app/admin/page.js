@@ -157,7 +157,7 @@ export default function AdminDashboard() {
                 {/* Page Header */}
                 <div className={styles.pageHeader}>
                     <div>
-                        <h1 className={styles.pageTitle}>Dashboard</h1>
+                        <h1 className={styles.pageTitle}>Admin Dashboard</h1>
                         <p className={styles.pageSubtitle}>
                             Monitor writer applications, assignments, and integrity reports.
                         </p>
