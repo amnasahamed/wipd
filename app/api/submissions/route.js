@@ -24,10 +24,10 @@ export async function GET(request) {
 
                 return {
                     id: s.id,
-                    title: s.assignment.title,
-                    writer: s.writer.fullName || 'Unknown',
-                    writerAvatar: (s.writer.fullName || "U").charAt(0),
-                    category: s.assignment.title.toLowerCase().includes('technical') ? 'technical' : 'academic', // Inference
+                    title: s.assignment?.title || 'Untitled Assignment',
+                    writer: s.writer?.fullName || 'Unknown Writer',
+                    writerAvatar: (s.writer?.fullName || "U").charAt(0),
+                    category: (s.assignment?.title || '').toLowerCase().includes('technical') ? 'technical' : 'academic', // Inference
                     submittedAt: s.createdAt,
                     integrityScore: s.integrityScore || 0,
                     aiScore: s.aiRiskScore || 0,

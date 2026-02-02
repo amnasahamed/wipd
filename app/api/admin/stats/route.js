@@ -5,10 +5,12 @@ export async function GET() {
     try {
         const assignments = await prisma.assignment.findMany({
             include: {
-                submission: {
+                submissions: {
                     include: {
-                        analysis: true
-                    }
+                        analysisResults: true // Changed from analysis to analysisResults based on earlier finding
+                    },
+                    orderBy: { createdAt: 'desc' },
+                    take: 1
                 }
             }
         });
@@ -19,12 +21,17 @@ export async function GET() {
         });
 
         // 1. Avg Integrity Score
-        const submissionsWithAnalysis = assignments.filter(a => a.submission && a.submission.analysis);
-        const totalIntegrity = submissionsWithAnalysis.reduce((acc, curr) => acc + (curr.submission.analysis.integrityScore || 0), 0);
+        // Get the latest submission for each assignment
+        const recentSubmissions = assignments
+            .map(a => a.submissions[0])
+            .filter(s => s !== undefined);
+
+        const submissionsWithAnalysis = recentSubmissions.filter(s => s.integrityScore !== null);
+        const totalIntegrity = submissionsWithAnalysis.reduce((acc, curr) => acc + (curr.integrityScore || 0), 0);
         const avgIntegrity = submissionsWithAnalysis.length > 0 ? (totalIntegrity / submissionsWithAnalysis.length).toFixed(1) : 0;
 
         // 2. AI Assistance Rate
-        const aiFlagged = submissionsWithAnalysis.filter(a => (a.submission.analysis.aiRiskScore || 0) > 20).length;
+        const aiFlagged = submissionsWithAnalysis.filter(s => (s.aiRiskScore || 0) > 20).length;
         const aiRate = submissionsWithAnalysis.length > 0 ? ((aiFlagged / submissionsWithAnalysis.length) * 100).toFixed(1) : 0;
 
         // 3. Task Completion Rate

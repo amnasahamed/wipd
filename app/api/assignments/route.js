@@ -19,7 +19,7 @@ export async function GET(request) {
             assignments: assignments.map(a => ({
                 id: a.id,
                 title: a.title,
-                writerName: a.writer.fullName || 'Unknown',
+                writerName: a.writer?.fullName || 'Unknown Writer',
                 deadline: a.deadline,
                 status: a.status,
                 lastSubmission: a.submissions[0] || null
