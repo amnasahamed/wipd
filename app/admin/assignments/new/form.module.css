@@ -1,0 +1,97 @@
+/* Assignment Form Styles */
+
+.formContainer {
+    max-width: 720px;
+}
+
+.formCard {
+    background: var(--bg-primary);
+    border: 1px solid var(--border-light);
+    border-radius: var(--radius-xl);
+    overflow: hidden;
+}
+
+.formSection {
+    padding: var(--space-6);
+    border-bottom: 1px solid var(--border-light);
+}
+
+.formSection:last-of-type {
+    border-bottom: none;
+}
+
+.formSection h3 {
+    font-size: var(--text-base);
+    font-weight: 600;
+    margin-bottom: var(--space-5);
+    color: var(--text-primary);
+}
+
+.formRow {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: var(--space-4);
+}
+
+.searchableSelect {
+    position: relative;
+}
+
+.dropdownList {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background: var(--bg-primary);
+    border: 1px solid var(--border-light);
+    border-radius: var(--radius-lg);
+    margin-top: var(--space-1);
+    box-shadow: var(--shadow-lg);
+    z-index: 100;
+    max-height: 200px;
+    overflow-y: auto;
+}
+
+.dropdownItem {
+    padding: var(--space-3) var(--space-4);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    cursor: pointer;
+    transition: background 0.2s ease;
+    font-size: var(--text-sm);
+}
+
+.dropdownItem:hover {
+    background: var(--bg-secondary);
+}
+
+.noResults {
+    padding: var(--space-4);
+    text-align: center;
+    color: var(--text-tertiary);
+    font-size: var(--text-sm);
+}
+
+.formActions {
+    display: flex;
+    justify-content: flex-end;
+    gap: var(--space-3);
+    padding: var(--space-5) var(--space-6);
+    background: var(--bg-secondary);
+    border-top: 1px solid var(--border-light);
+}
+
+@media (max-width: 768px) {
+    .formRow {
+        grid-template-columns: 1fr;
+    }
+
+    .formActions {
+        flex-direction: column;
+    }
+
+    .formActions .btn {
+        width: 100%;
+    }
+}

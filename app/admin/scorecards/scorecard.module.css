@@ -1,0 +1,211 @@
+/* Writer Scorecard Styles */
+
+.scorecardsGrid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: var(--space-5);
+}
+
+.scorecardCard {
+    background: var(--bg-primary);
+    border: 1px solid var(--border-light);
+    border-radius: var(--radius-xl);
+    padding: var(--space-5);
+}
+
+.cardHeader {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: var(--space-5);
+}
+
+.writerInfo {
+    display: flex;
+    gap: var(--space-3);
+}
+
+.writerAvatar {
+    width: 48px;
+    height: 48px;
+    background: linear-gradient(135deg, var(--primary-500), var(--primary-700));
+    color: #ffffff;
+    border-radius: var(--radius-lg);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 600;
+    font-size: var(--text-base);
+}
+
+.writerInfo h3 {
+    font-size: var(--text-base);
+    font-weight: 600;
+    margin-bottom: var(--space-1);
+}
+
+.email {
+    font-size: var(--text-xs);
+    color: var(--text-tertiary);
+}
+
+.statusGroup {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: var(--space-2);
+}
+
+.trendBadge {
+    font-size: var(--text-xs);
+    font-weight: 500;
+    text-transform: capitalize;
+}
+
+.trendBadge.success {
+    color: var(--success-600);
+}
+
+.trendBadge.danger {
+    color: var(--danger-600);
+}
+
+.trendBadge.neutral {
+    color: var(--text-tertiary);
+}
+
+/* Summary Stats */
+.summaryStats {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: var(--space-3);
+    padding: var(--space-4);
+    background: var(--bg-secondary);
+    border-radius: var(--radius-lg);
+    margin-bottom: var(--space-5);
+}
+
+.statBox {
+    text-align: center;
+}
+
+.statNumber {
+    display: block;
+    font-size: var(--text-xl);
+    font-weight: 700;
+    color: var(--text-primary);
+    margin-bottom: var(--space-1);
+}
+
+.statNumber.success {
+    color: var(--success-600);
+}
+
+.statNumber.danger {
+    color: var(--danger-600);
+}
+
+.statLabel {
+    font-size: var(--text-xs);
+    color: var(--text-tertiary);
+}
+
+/* Metrics Section */
+.metricsSection {
+    margin-bottom: var(--space-5);
+}
+
+.metricsSection h4 {
+    font-size: var(--text-xs);
+    font-weight: 600;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: var(--space-3);
+}
+
+.metricRow {
+    display: grid;
+    grid-template-columns: 80px 1fr 50px;
+    align-items: center;
+    gap: var(--space-3);
+    margin-bottom: var(--space-2);
+    font-size: var(--text-sm);
+}
+
+.metricRow:last-child {
+    margin-bottom: 0;
+}
+
+.metricRow>span:first-child {
+    color: var(--text-secondary);
+}
+
+.metricBar {
+    height: 8px;
+    background: var(--bg-tertiary);
+    border-radius: var(--radius-full);
+    overflow: hidden;
+}
+
+.metricFill {
+    height: 100%;
+    border-radius: var(--radius-full);
+    transition: width 0.5s ease;
+}
+
+.metricFill.excellent {
+    background: var(--success-500);
+}
+
+.metricFill.good {
+    background: var(--warning-500);
+}
+
+.metricFill.poor {
+    background: var(--danger-500);
+}
+
+.excellent {
+    color: var(--success-600);
+    font-weight: 600;
+}
+
+.good {
+    color: var(--warning-600);
+    font-weight: 600;
+}
+
+.poor {
+    color: var(--danger-600);
+    font-weight: 600;
+}
+
+/* Card Actions */
+.cardActions {
+    padding-top: var(--space-4);
+    border-top: 1px solid var(--border-light);
+}
+
+/* Responsive */
+@media (max-width: 1200px) {
+    .scorecardsGrid {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 768px) {
+    .cardHeader {
+        flex-direction: column;
+        gap: var(--space-3);
+    }
+
+    .statusGroup {
+        flex-direction: row;
+        align-items: center;
+    }
+
+    .summaryStats {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}

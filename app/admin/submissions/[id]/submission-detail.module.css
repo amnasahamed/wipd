@@ -1,0 +1,302 @@
+/* Submission Detail View Styles */
+
+.loadingScreen {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100vh;
+    gap: var(--space-4);
+    background: var(--bg-primary);
+}
+
+.spinner {
+    width: 40px;
+    height: 40px;
+    border: 4px solid var(--border-light);
+    border-top-color: var(--primary-500);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+.reportHeader {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: var(--space-8);
+    padding-bottom: var(--space-6);
+    border-bottom: 1px solid var(--border-light);
+}
+
+.writerBadge {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    margin-bottom: var(--space-3);
+    font-weight: 500;
+    color: var(--text-secondary);
+}
+
+.avatar {
+    width: 32px;
+    height: 32px;
+    background: var(--primary-600);
+    color: white;
+    border-radius: var(--radius-md);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: var(--text-xs);
+}
+
+.title {
+    font-size: var(--text-3xl);
+    font-weight: 700;
+    color: var(--text-primary);
+    margin-bottom: var(--space-2);
+}
+
+.meta {
+    color: var(--text-tertiary);
+    font-size: var(--text-sm);
+}
+
+.actions {
+    display: flex;
+    gap: var(--space-3);
+}
+
+.reportGrid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--space-6);
+}
+
+.sectionCard {
+    background: var(--bg-primary);
+    border: 1px solid var(--border-light);
+    border-radius: var(--radius-xl);
+    padding: var(--space-6);
+    margin-bottom: var(--space-6);
+}
+
+.sectionCard h3 {
+    font-size: var(--text-sm);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text-tertiary);
+    margin-bottom: var(--space-5);
+}
+
+/* Metric Main Styles */
+.metricMain {
+    display: flex;
+    align-items: center;
+    gap: var(--space-8);
+    margin-bottom: var(--space-5);
+}
+
+.gaugeContainer {
+    width: 120px;
+    height: 120px;
+    border-radius: 50%;
+    border: 10px solid var(--success-100);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    border-top-color: var(--success-500);
+    transform: rotate(45deg);
+}
+
+.gaugeValue {
+    font-size: var(--text-2xl);
+    font-weight: 800;
+    color: var(--text-primary);
+    transform: rotate(-45deg);
+}
+
+.gaugeLabel {
+    font-size: var(--text-xs);
+    color: var(--text-tertiary);
+    transform: rotate(-45deg);
+}
+
+.statList {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+}
+
+.statItem {
+    display: flex;
+    justify-content: space-between;
+    font-size: var(--text-sm);
+    padding-bottom: var(--space-2);
+    border-bottom: 1px solid var(--bg-secondary);
+}
+
+.statLabel {
+    color: var(--text-tertiary);
+}
+
+.statVal {
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.interpretation {
+    font-size: var(--text-sm);
+    color: var(--text-secondary);
+    line-height: 1.5;
+    padding: var(--space-4);
+    background: var(--bg-secondary);
+    border-radius: var(--radius-lg);
+}
+
+/* LLM Cards */
+.aiRiskCard {
+    border-left: 4px solid var(--warning-500);
+}
+
+.cardHeader {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: var(--space-5);
+}
+
+.scorePill {
+    padding: var(--space-1) var(--space-3);
+    background: var(--warning-100);
+    color: var(--warning-800);
+    border-radius: var(--radius-full);
+    font-size: var(--text-xs);
+    font-weight: 700;
+}
+
+.markerList {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+    margin-bottom: var(--space-4);
+}
+
+.marker {
+    padding: var(--space-2) var(--space-3);
+    font-size: var(--text-xs);
+    border-radius: var(--radius-md);
+    border-left: 3px solid transparent;
+}
+
+.marker.warning {
+    background: var(--warning-50);
+    border-left-color: var(--warning-400);
+    color: var(--warning-800);
+}
+
+.marker.positive {
+    background: var(--success-50);
+    border-left-color: var(--success-400);
+    color: var(--success-800);
+}
+
+.marker.neutral {
+    background: var(--neutral-50);
+    border-left-color: var(--neutral-400);
+    color: var(--neutral-800);
+}
+
+.analystNote {
+    font-size: var(--text-sm);
+    color: var(--text-secondary);
+    line-height: 1.6;
+}
+
+/* Citations */
+.citationHeader {
+    margin-bottom: var(--space-4);
+}
+
+.citationCount {
+    font-size: var(--text-lg);
+    font-weight: 700;
+}
+
+.citationList {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+}
+
+.citationItem {
+    padding-bottom: var(--space-4);
+    border-bottom: 1px solid var(--bg-secondary);
+}
+
+.citationSource {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    margin-bottom: var(--space-1);
+    font-size: var(--text-sm);
+}
+
+.dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+}
+
+.dot.verified {
+    background: var(--success-500);
+}
+
+.dot.unverified {
+    background: var(--danger-500);
+}
+
+.citationSnippet {
+    font-size: var(--text-xs);
+    color: var(--text-tertiary);
+    italic: true;
+}
+
+/* Reasoning */
+.reasoningHeader {
+    display: flex;
+    align-items: baseline;
+    gap: var(--space-2);
+    margin-bottom: var(--space-3);
+}
+
+.reasoningScore {
+    font-size: var(--text-4xl);
+    font-weight: 800;
+    color: var(--primary-600);
+}
+
+.scoreMax {
+    color: var(--text-tertiary);
+    font-weight: 500;
+}
+
+.reasoningText {
+    font-size: var(--text-sm);
+    color: var(--text-secondary);
+    line-height: 1.6;
+}
+
+@media (max-width: 1024px) {
+    .reportGrid {
+        grid-template-columns: 1fr;
+    }
+}

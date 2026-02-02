@@ -1,0 +1,185 @@
+/* Writer Insights Styles */
+
+.tipsBanner {
+    display: flex;
+    gap: var(--space-4);
+    padding: var(--space-5);
+    background: linear-gradient(135deg, var(--primary-50), var(--primary-100));
+    border: 1px solid var(--primary-200);
+    border-radius: var(--radius-xl);
+    margin-bottom: var(--space-8);
+}
+
+.tipsIcon {
+    font-size: var(--text-2xl);
+    flex-shrink: 0;
+}
+
+.tipsContent h4 {
+    font-size: var(--text-sm);
+    font-weight: 600;
+    color: var(--primary-800);
+    margin-bottom: var(--space-1);
+}
+
+.tipsContent p {
+    font-size: var(--text-sm);
+    color: var(--primary-700);
+    margin: 0;
+}
+
+/* Insights List */
+.insightsList {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-6);
+}
+
+.insightCard {
+    background: var(--bg-primary);
+    border: 1px solid var(--border-light);
+    border-radius: var(--radius-xl);
+    padding: var(--space-6);
+}
+
+.cardHeader {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: var(--space-5);
+}
+
+.cardHeader h3 {
+    font-size: var(--text-lg);
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: var(--space-1);
+}
+
+.submissionDate {
+    font-size: var(--text-sm);
+    color: var(--text-tertiary);
+}
+
+/* Score Grid */
+.scoreGrid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: var(--space-4);
+    margin-bottom: var(--space-5);
+}
+
+.scoreCard {
+    padding: var(--space-4);
+    border-radius: var(--radius-lg);
+}
+
+.scoreCard.excellent {
+    background: var(--success-50);
+    border: 1px solid var(--success-200);
+}
+
+.scoreCard.good {
+    background: var(--warning-50);
+    border: 1px solid var(--warning-200);
+}
+
+.scoreCard.needs_work {
+    background: var(--danger-50);
+    border: 1px solid var(--danger-200);
+}
+
+.scoreHeader {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: var(--space-2);
+    font-size: var(--text-sm);
+    font-weight: 500;
+}
+
+.scoreCard.excellent .scoreHeader {
+    color: var(--success-700);
+}
+
+.scoreCard.good .scoreHeader {
+    color: var(--warning-700);
+}
+
+.scoreCard.needs_work .scoreHeader {
+    color: var(--danger-700);
+}
+
+.scoreValue {
+    font-size: var(--text-lg);
+    font-weight: 700;
+}
+
+.scoreCard p {
+    font-size: var(--text-sm);
+    line-height: 1.5;
+    margin: 0;
+}
+
+.scoreCard.excellent p {
+    color: var(--success-700);
+}
+
+.scoreCard.good p {
+    color: var(--warning-700);
+}
+
+.scoreCard.needs_work p {
+    color: var(--danger-700);
+}
+
+/* Suggestions */
+.suggestionsSection {
+    padding: var(--space-4);
+    background: var(--bg-secondary);
+    border-radius: var(--radius-lg);
+    margin-bottom: var(--space-5);
+}
+
+.suggestionsSection h4 {
+    font-size: var(--text-sm);
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: var(--space-3);
+}
+
+.suggestionsSection ul {
+    padding-left: var(--space-5);
+    margin: 0;
+}
+
+.suggestionsSection li {
+    font-size: var(--text-sm);
+    color: var(--text-secondary);
+    margin-bottom: var(--space-2);
+    line-height: 1.5;
+}
+
+.suggestionsSection li:last-child {
+    margin-bottom: 0;
+}
+
+/* Card Actions */
+.cardActions {
+    padding-top: var(--space-5);
+    border-top: 1px solid var(--border-light);
+}
+
+/* Responsive */
+@media (max-width: 1024px) {
+    .scoreGrid {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 768px) {
+    .cardHeader {
+        flex-direction: column;
+        gap: var(--space-2);
+    }
+}

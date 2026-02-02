@@ -1,0 +1,160 @@
+/* Login Page Styles */
+
+.loginContainer {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--bg-secondary);
+    padding: var(--space-4);
+}
+
+.loginCard {
+    width: 100%;
+    max-width: 440px;
+    background: var(--bg-primary);
+    border: 1px solid var(--border-light);
+    border-radius: var(--radius-2xl);
+    padding: var(--space-10);
+    box-shadow: var(--shadow-xl);
+}
+
+.loginHeader {
+    text-align: center;
+    margin-bottom: var(--space-8);
+}
+
+.logo {
+    font-size: var(--text-4xl);
+    margin-bottom: var(--space-4);
+}
+
+.loginHeader h1 {
+    font-size: var(--text-2xl);
+    font-weight: 700;
+    color: var(--text-primary);
+    margin-bottom: var(--space-2);
+}
+
+.loginHeader p {
+    color: var(--text-tertiary);
+    font-size: var(--text-sm);
+}
+
+.roleToggle {
+    display: flex;
+    background: var(--bg-secondary);
+    border-radius: var(--radius-lg);
+    padding: var(--space-1);
+    margin-bottom: var(--space-6);
+}
+
+.roleToggle button {
+    flex: 1;
+    padding: var(--space-2);
+    border: none;
+    background: transparent;
+    font-size: var(--text-sm);
+    font-weight: 500;
+    color: var(--text-secondary);
+    cursor: pointer;
+    border-radius: var(--radius-md);
+    transition: all 0.2s ease;
+}
+
+.roleToggle button.active {
+    background: var(--bg-primary);
+    color: var(--primary-600);
+    box-shadow: var(--shadow-sm);
+}
+
+.loginForm {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-5);
+}
+
+.inputGroup {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+}
+
+.inputGroup label {
+    font-size: var(--text-xs);
+    font-weight: 600;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.inputGroup input {
+    padding: var(--space-3);
+    background: var(--bg-primary);
+    border: 1px solid var(--border-light);
+    border-radius: var(--radius-lg);
+    font-size: var(--text-base);
+    transition: all 0.2s ease;
+}
+
+.inputGroup input:focus {
+    outline: none;
+    border-color: var(--primary-500);
+    box-shadow: 0 0 0 4px var(--primary-100);
+}
+
+.formOptions {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: var(--text-sm);
+}
+
+.rememberMe {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    cursor: pointer;
+    color: var(--text-secondary);
+}
+
+.forgotPassword {
+    color: var(--primary-600);
+    text-decoration: none;
+    font-weight: 500;
+}
+
+.loginButton {
+    background: var(--primary-600);
+    color: white;
+    border: none;
+    padding: var(--space-3);
+    border-radius: var(--radius-lg);
+    font-size: var(--text-base);
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    margin-top: var(--space-2);
+}
+
+.loginButton:hover {
+    background: var(--primary-700);
+}
+
+.loginButton:disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
+}
+
+.loginFooter {
+    margin-top: var(--space-8);
+    text-align: center;
+    font-size: var(--text-sm);
+    color: var(--text-tertiary);
+}
+
+.loginFooter a {
+    color: var(--primary-600);
+    text-decoration: none;
+    font-weight: 600;
+}
