@@ -1,81 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import styles from "../admin.module.css";
 import scorecardStyles from "./scorecard.module.css";
-
-// Mock writer scorecard data
-const mockWriters = [
-    {
-        id: "1",
-        name: "Sarah Johnson",
-        email: "sarah.j@example.com",
-        status: "probation",
-        joinedAt: "2026-01-15",
-        stats: {
-            totalSubmissions: 5,
-            approved: 4,
-            revisions: 1,
-            rejected: 0,
-            avgStyleMatch: 92,
-            avgAiRisk: 8,
-            avgCitations: 94,
-        },
-        recentTrend: "improving",
-    },
-    {
-        id: "2",
-        name: "Michael Chen",
-        email: "m.chen@example.com",
-        status: "active",
-        joinedAt: "2025-11-20",
-        stats: {
-            totalSubmissions: 28,
-            approved: 26,
-            revisions: 2,
-            rejected: 0,
-            avgStyleMatch: 89,
-            avgAiRisk: 12,
-            avgCitations: 91,
-        },
-        recentTrend: "stable",
-    },
-    {
-        id: "3",
-        name: "Emily Rodriguez",
-        email: "emily.r@example.com",
-        status: "probation",
-        joinedAt: "2026-01-25",
-        stats: {
-            totalSubmissions: 3,
-            approved: 1,
-            revisions: 1,
-            rejected: 1,
-            avgStyleMatch: 58,
-            avgAiRisk: 45,
-            avgCitations: 72,
-        },
-        recentTrend: "declining",
-    },
-    {
-        id: "4",
-        name: "David Kim",
-        email: "d.kim@example.com",
-        status: "active",
-        joinedAt: "2025-09-10",
-        stats: {
-            totalSubmissions: 45,
-            approved: 44,
-            revisions: 1,
-            rejected: 0,
-            avgStyleMatch: 96,
-            avgAiRisk: 5,
-            avgCitations: 98,
-        },
-        recentTrend: "improving",
-    },
-];
 
 export default function WriterScorecardsPage() {
     const [writers, setWriters] = useState([]);
