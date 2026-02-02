@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useCallback } from "react";
+import { useEffect, useState, useCallback } from "react";
 import styles from "../dashboard.module.css";
 import insightStyles from "./insights.module.css";
 
