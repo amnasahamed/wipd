@@ -3,16 +3,16 @@ import prisma from '@/lib/prisma';
 
 export async function GET() {
     try {
-        const applications = await prisma.user.findMany({
+        const allWriters = await prisma.user.findMany({
             where: {
-                role: 'WRITER',
-                profile: {
-                    status: 'ONBOARDING'
-                }
+                role: 'WRITER'
             },
             include: { profile: true },
             orderBy: { createdAt: 'desc' }
         });
+
+        // Filter in memory to be safe against potential Prisma relation filter edge cases
+        const applications = allWriters.filter(app => app.profile?.status === 'ONBOARDING');
 
         return NextResponse.json({
             success: true,
