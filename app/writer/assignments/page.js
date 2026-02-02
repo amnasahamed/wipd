@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import Link from "next/link";
 import styles from "../dashboard.module.css";
 
 export default function AssignmentsPage() {

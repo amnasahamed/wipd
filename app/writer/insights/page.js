@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import Link from "next/link";
 import styles from "../dashboard.module.css";
 import insightStyles from "./insights.module.css";
 
