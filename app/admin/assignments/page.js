@@ -54,9 +54,38 @@ const mockAssignments = [
 ];
 
 export default function AssignmentsPage() {
-    const [assignments, setAssignments] = useState(mockAssignments);
+    const [assignments, setAssignments] = useState([]);
     const [statusFilter, setStatusFilter] = useState("all");
     const [searchQuery, setSearchQuery] = useState("");
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        const fetchAssignments = async () => {
+            try {
+                const res = await fetch('/api/assignments');
+                const data = await res.json();
+                if (data.success) {
+                    // Transform API data to match UI expectations if needed
+                    // API returns: { id, title, writerName, deadline, status, lastSubmission }
+                    const formatted = data.assignments.map(a => ({
+                        id: a.id,
+                        title: a.title,
+                        writer: a.writerName,
+                        type: "technical", // Default or fetch if available
+                        status: a.status.toLowerCase(),
+                        deadline: new Date(a.deadline).toLocaleDateString(),
+                        reward: "$100.00" // Placeholder or fetch
+                    }));
+                    setAssignments(formatted);
+                }
+            } catch (error) {
+                console.error('Error fetching assignments:', error);
+            } finally {
+                setLoading(false);
+            }
+        };
+        fetchAssignments();
+    }, []);
 
     const filteredAssignments = assignments.filter((item) => {
         const matchesStatus = statusFilter === "all" || item.status === statusFilter;
@@ -73,6 +102,10 @@ export default function AssignmentsPage() {
             default: return 'badge-neutral';
         }
     };
+
+    if (loading) {
+        return <div className={styles.adminLayout}><main className={styles.adminMain}>Loading...</main></div>;
+    }
 
     return (
         <div className={styles.adminLayout}>
@@ -236,3 +269,4 @@ export default function AssignmentsPage() {
         </div>
     );
 }
+

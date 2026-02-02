@@ -8,18 +8,24 @@ export async function GET(request) {
         const { searchParams } = new URL(request.url);
         const email = searchParams.get('email');
 
+        // Strict session check via cookie
+        const { cookies } = await import("next/headers");
+        const cookieStore = await cookies();
+        const userId = cookieStore.get('auth-token')?.value;
+
         let user;
-        if (email) {
+        if (userId) {
             user = await prisma.user.findUnique({
-                where: { email },
-                include: { profile: true }
-            });
-        } else {
-            // Default to first user or return unauthorized
-            user = await prisma.user.findFirst({
+                where: { id: userId },
                 include: { profile: true }
             });
         }
+
+        // If no user found by cookie, strictly unauthorized
+        if (!userId || !user) {
+            return NextResponse.json({ authenticated: false }, { status: 401 });
+        }
+
 
         if (!user) {
             return NextResponse.json({ authenticated: false }, { status: 401 });

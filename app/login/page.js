@@ -12,19 +12,35 @@ export default function LoginPage() {
     const [isLoading, setIsLoading] = useState(false);
     const router = useRouter();
 
-    const handleLogin = (e) => {
+    const handleLogin = async (e) => {
         e.preventDefault();
         setIsLoading(true);
 
-        // Simulate auth logic
-        setTimeout(() => {
-            if (role === "admin") {
-                router.push("/admin");
+        try {
+            const res = await fetch('/api/auth/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email, password })
+            });
+
+            const data = await res.json();
+
+            if (data.success) {
+                // Redirect based on role
+                if (data.user.role === 'ADMIN') {
+                    router.push("/admin");
+                } else {
+                    router.push("/writer");
+                }
             } else {
-                router.push("/writer");
+                alert(data.error || 'Login failed');
             }
+        } catch (err) {
+            console.error('Login error:', err);
+            alert('An error occurred during login');
+        } finally {
             setIsLoading(false);
-        }, 1200);
+        }
     };
 
     return (
