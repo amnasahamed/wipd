@@ -4,12 +4,13 @@ import prisma from '@/lib/prisma';
 export async function GET(request) {
     try {
         const { searchParams } = new URL(request.url);
-        const limit = searchParams.get('limit');
+        const detailed = searchParams.get('detailed') === 'true';
 
         const submissions = await prisma.submission.findMany({
             include: {
                 assignment: true,
-                writer: true
+                writer: true,
+                analysisResults: detailed // Include if requested
             },
             orderBy: { createdAt: 'desc' },
             take: limit ? parseInt(limit) : undefined
@@ -17,16 +18,35 @@ export async function GET(request) {
 
         return NextResponse.json({
             success: true,
-            submissions: submissions.map(s => ({
-                id: s.id,
-                title: s.assignment.title,
-                writer: s.writer.fullName || 'Unknown',
-                submittedAt: s.createdAt,
-                integrityScore: s.integrityScore || 0,
-                aiScore: s.aiRiskScore || 0,
-                plagiarismScore: 0, // Placeholder as not in core schema yet
-                status: s.status.toLowerCase() == 'pending_review' ? 'pending' : s.status.toLowerCase()
-            }))
+            submissions: submissions.map(s => {
+                const result = s.analysisResults?.[0]; // Get latest result
+                const signals = result?.signals ? JSON.parse(result.signals) : [];
+
+                return {
+                    id: s.id,
+                    title: s.assignment.title,
+                    writer: s.writer.fullName || 'Unknown',
+                    writerAvatar: (s.writer.fullName || "U").charAt(0),
+                    category: s.assignment.title.toLowerCase().includes('technical') ? 'technical' : 'academic', // Inference
+                    submittedAt: s.createdAt,
+                    integrityScore: s.integrityScore || 0,
+                    aiScore: s.aiRiskScore || 0,
+                    plagiarismScore: 0,
+                    status: s.status.toLowerCase(),
+                    // Detailed report structure for integrity page
+                    integrityReport: detailed ? {
+                        overallRisk: s.integrityScore < 70 ? 'high' : s.integrityScore < 90 ? 'medium' : 'low',
+                        styleMatch: s.integrityScore || 0,
+                        internalSimilarity: 10, // Placeholder
+                        aiRiskScore: s.aiRiskScore || 0,
+                        citationScore: 95, // Placeholder
+                        wordCount: s.content?.split(' ').length || 0,
+                        signals: signals.length > 0 ? signals : [
+                            { type: "neutral", message: "Analysis pending or incomplete" }
+                        ]
+                    } : null
+                };
+            })
         });
     } catch (error) {
         console.error('Fetch submissions error:', error);

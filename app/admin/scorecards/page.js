@@ -78,8 +78,26 @@ const mockWriters = [
 ];
 
 export default function WriterScorecardsPage() {
-    const [writers] = useState(mockWriters);
+    const [writers, setWriters] = useState([]);
     const [statusFilter, setStatusFilter] = useState("all");
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        const fetchWriters = async () => {
+            try {
+                const res = await fetch('/api/writers');
+                const data = await res.json();
+                if (data.success) {
+                    setWriters(data.writers);
+                }
+            } catch (error) {
+                console.error('Error fetching writers:', error);
+            } finally {
+                setLoading(false);
+            }
+        };
+        fetchWriters();
+    }, []);
 
     const filteredWriters = writers.filter((w) => {
         if (statusFilter === "all") return true;
@@ -87,7 +105,7 @@ export default function WriterScorecardsPage() {
     });
 
     const getApprovalRate = (stats) => {
-        if (stats.totalSubmissions === 0) return 0;
+        if (!stats || stats.totalSubmissions === 0) return 0;
         return Math.round((stats.approved / stats.totalSubmissions) * 100);
     };
 
@@ -112,6 +130,8 @@ export default function WriterScorecardsPage() {
         if (score >= 60) return "good";
         return "poor";
     };
+
+    if (loading) return <div className={styles.adminLayout}><main className={styles.adminMain}>Loading...</main></div>;
 
     return (
         <div className={styles.adminLayout}>
@@ -189,17 +209,20 @@ export default function WriterScorecardsPage() {
                     {filteredWriters.map((writer) => {
                         const trend = getTrendIcon(writer.recentTrend);
                         const approvalRate = getApprovalRate(writer.stats);
+                        // Mock fallback for name/email
+                        const displayName = writer.name || "Unknown Writer";
+                        const displayEmail = writer.email || "no-email";
 
                         return (
                             <div key={writer.id} className={scorecardStyles.scorecardCard}>
                                 <div className={scorecardStyles.cardHeader}>
                                     <div className={scorecardStyles.writerInfo}>
                                         <div className={scorecardStyles.writerAvatar}>
-                                            {writer.name.split(" ").map((n) => n[0]).join("")}
+                                            {displayName.split(" ").map((n) => n[0]).join("")}
                                         </div>
                                         <div>
-                                            <h3>{writer.name}</h3>
-                                            <span className={scorecardStyles.email}>{writer.email}</span>
+                                            <h3>{displayName}</h3>
+                                            <span className={scorecardStyles.email}>{displayEmail}</span>
                                         </div>
                                     </div>
                                     <div className={scorecardStyles.statusGroup}>
