@@ -26,7 +26,7 @@ export async function POST(request) {
         // In production, secure: true should be set if on HTTPS
         (await cookies()).set({
             name: 'auth-token',
-            value: user.id,
+            value: JSON.stringify({ id: user.id, role: user.role }),
             httpOnly: true,
             path: '/',
             maxAge: 60 * 60 * 24 * 7, // 1 week
