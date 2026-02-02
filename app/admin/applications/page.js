@@ -1,70 +1,39 @@
 "use client";
 
-import { useState } from "react";
-import Link from "next/link";
+import { useEffect } from "react";
 import styles from "../admin.module.css";
 
-// Mock applications data
-const mockApplications = [
-    {
-        id: "1",
-        name: "Sarah Johnson",
-        email: "sarah.j@example.com",
-        appliedAt: "2026-02-01T14:30:00Z",
-        status: "pending",
-        workTypes: ["academic"],
-        grammarScore: 92,
-        policyScore: 88,
-    },
-    {
-        id: "2",
-        name: "Michael Chen",
-        email: "m.chen@example.com",
-        appliedAt: "2026-02-01T10:15:00Z",
-        status: "pending",
-        workTypes: ["technical"],
-        grammarScore: 85,
-        policyScore: 90,
-    },
-    {
-        id: "3",
-        name: "Emily Rodriguez",
-        email: "emily.r@example.com",
-        appliedAt: "2026-01-31T16:45:00Z",
-        status: "approved",
-        workTypes: ["academic", "technical"],
-        grammarScore: 95,
-        policyScore: 92,
-    },
-    {
-        id: "4",
-        name: "David Kim",
-        email: "david.kim@example.com",
-        appliedAt: "2026-01-31T09:20:00Z",
-        status: "rejected",
-        workTypes: ["academic"],
-        grammarScore: 68,
-        policyScore: 75,
-    },
-    {
-        id: "5",
-        name: "Jessica Taylor",
-        email: "jtaylor@example.com",
-        appliedAt: "2026-01-30T13:10:00Z",
-        status: "pending",
-        workTypes: ["technical"],
-        grammarScore: 89,
-        policyScore: 82,
-    }
-];
-
 export default function ApplicationsPage() {
-    const [applications, setApplications] = useState(mockApplications);
+    const [applications, setApplications] = useState([]);
     const [statusFilter, setStatusFilter] = useState("all");
     const [searchQuery, setSearchQuery] = useState("");
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
+
+    useEffect(() => {
+        fetchApplications();
+    }, []);
+
+    const fetchApplications = async () => {
+        setLoading(true);
+        try {
+            const response = await fetch('/api/applications');
+            const data = await response.json();
+            if (data.success) {
+                setApplications(data.applications);
+            } else {
+                setError(data.error || 'Failed to fetch applications');
+            }
+        } catch (err) {
+            setError('Error connecting to API');
+            console.error(err);
+        } finally {
+            setLoading(false);
+        }
+    };
 
     const filteredApplications = applications.filter((app) => {
-        const matchesStatus = statusFilter === "all" || app.status === statusFilter;
+        const matchesStatus = statusFilter === "all" || app.status.toLowerCase() === statusFilter.toLowerCase();
         const matchesSearch = app.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
             app.email.toLowerCase().includes(searchQuery.toLowerCase());
         return matchesStatus && matchesSearch;
@@ -164,6 +133,9 @@ export default function ApplicationsPage() {
                     <div className={styles.tableHeader}>
                         <h2 className={styles.tableTitle}>All Applications</h2>
                         <div className={styles.tableActions}>
+                            <button onClick={fetchApplications} className={styles.filterBtn} style={{ marginRight: '10px' }}>
+                                Refresh
+                            </button>
                             <div className={styles.searchInput}>
                                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
                                     <path strokeLinecap="round" strokeLinejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
@@ -181,87 +153,89 @@ export default function ApplicationsPage() {
                                 onChange={(e) => setStatusFilter(e.target.value)}
                             >
                                 <option value="all">All Status</option>
-                                <option value="pending">Pending</option>
-                                <option value="approved">Approved</option>
+                                <option value="onboarding">Onboarding</option>
+                                <option value="active">Active</option>
                                 <option value="rejected">Rejected</option>
                             </select>
                         </div>
                     </div>
 
-                    <table className={styles.dataTable}>
-                        <thead>
-                            <tr>
-                                <th>Applicant</th>
-                                <th>Applied Date</th>
-                                <th>Work Types</th>
-                                <th>Test Scores</th>
-                                <th>Status</th>
-                                <th>Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {filteredApplications.map((app) => (
-                                <tr key={app.id}>
-                                    <td>
-                                        <div className={styles.applicantInfo}>
-                                            <div className={styles.applicantAvatar}>
-                                                {app.name.split(" ").map(n => n[0]).join("")}
-                                            </div>
-                                            <div>
-                                                <div className={styles.applicantName}>{app.name}</div>
-                                                <div className={styles.applicantEmail}>{app.email}</div>
-                                            </div>
-                                        </div>
-                                    </td>
-                                    <td>{formatDate(app.appliedAt)}</td>
-                                    <td>
-                                        <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
-                                            {app.workTypes.map(type => (
-                                                <span key={type} className="badge badge-neutral" style={{ fontSize: '10px' }}>
-                                                    {type}
-                                                </span>
-                                            ))}
-                                        </div>
-                                    </td>
-                                    <td>
-                                        <div className={styles.testScore}>
-                                            <div className={styles.scoreText}>G: {app.grammarScore}%</div>
-                                            <div className={styles.scoreBar}>
-                                                <div
-                                                    className={`${styles.scoreFill} ${getScoreClass(app.grammarScore)}`}
-                                                    style={{ width: `${app.grammarScore}%` }}
-                                                ></div>
-                                            </div>
-                                        </div>
-                                        <div className={styles.testScore} style={{ marginTop: '4px' }}>
-                                            <div className={styles.scoreText}>P: {app.policyScore}%</div>
-                                            <div className={styles.scoreBar}>
-                                                <div
-                                                    className={`${styles.scoreFill} ${getScoreClass(app.policyScore)}`}
-                                                    style={{ width: `${app.policyScore}%` }}
-                                                ></div>
-                                            </div>
-                                        </div>
-                                    </td>
-                                    <td>
-                                        <span className={`${styles.statusBadge} ${styles[app.status]}`}>
-                                            {app.status}
-                                        </span>
-                                    </td>
-                                    <td>
-                                        <div className={styles.actionButtons}>
-                                            <Link href={`/admin/applications/${app.id}`} className={`${styles.actionBtn} ${styles.view}`} title="View Details">
-                                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-                                                    <path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178Z" />
-                                                    <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
-                                                </svg>
-                                            </Link>
-                                        </div>
-                                    </td>
+                    {loading ? (
+                        <div className={styles.emptyState}>
+                            <div className="spinner"></div>
+                            <p>Loading applications...</p>
+                        </div>
+                    ) : error ? (
+                        <div className={styles.emptyState}>
+                            <p style={{ color: 'red' }}>{error}</p>
+                            <button onClick={fetchApplications} className={styles.filterBtn}>Retry</button>
+                        </div>
+                    ) : (
+                        <table className={styles.dataTable}>
+                            <thead>
+                                <tr>
+                                    <th>Applicant</th>
+                                    <th>Applied Date</th>
+                                    <th>Test Scores</th>
+                                    <th>Status</th>
+                                    <th>Actions</th>
                                 </tr>
-                            ))}
-                        </tbody>
-                    </table>
+                            </thead>
+                            <tbody>
+                                {filteredApplications.map((app) => (
+                                    <tr key={app.id}>
+                                        <td>
+                                            <div className={styles.applicantInfo}>
+                                                <div className={styles.applicantAvatar}>
+                                                    {app.name.split(" ").map(n => n[0]).join("")}
+                                                </div>
+                                                <div>
+                                                    <div className={styles.applicantName}>{app.name}</div>
+                                                    <div className={styles.applicantEmail}>{app.email}</div>
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td>{formatDate(app.appliedAt)}</td>
+                                        <td>
+                                            <div className={styles.testScore}>
+                                                <div className={styles.scoreText}>G: {app.grammarScore || 0}%</div>
+                                                <div className={styles.scoreBar}>
+                                                    <div
+                                                        className={`${styles.scoreFill} ${getScoreClass(app.grammarScore || 0)}`}
+                                                        style={{ width: `${app.grammarScore || 0}%` }}
+                                                    ></div>
+                                                </div>
+                                            </div>
+                                            <div className={styles.testScore} style={{ marginTop: '4px' }}>
+                                                <div className={styles.scoreText}>P: {app.policyScore || 0}%</div>
+                                                <div className={styles.scoreBar}>
+                                                    <div
+                                                        className={`${styles.scoreFill} ${getScoreClass(app.policyScore || 0)}`}
+                                                        style={{ width: `${app.policyScore || 0}%` }}
+                                                    ></div>
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <span className={`${styles.statusBadge} ${styles[app.status.toLowerCase()]}`}>
+                                                {app.status}
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <div className={styles.actionButtons}>
+                                                <Link href={`/admin/applications/${app.id}`} className={`${styles.actionBtn} ${styles.view}`} title="View Details">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178Z" />
+                                                        <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
+                                                    </svg>
+                                                </Link>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    )}
 
                     {filteredApplications.length === 0 && (
                         <div className={styles.emptyState}>
@@ -277,7 +251,7 @@ export default function ApplicationsPage() {
 
                     <div className={styles.tablePagination}>
                         <div className={styles.paginationInfo}>
-                            Showing {filteredApplications.length} of {mockApplications.length} applications
+                            Showing {filteredApplications.length} of {applications.length} applications
                         </div>
                         <div className={styles.paginationControls}>
                             <button className={styles.paginationBtn} disabled>

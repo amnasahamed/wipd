@@ -1,9 +1,43 @@
-"use client";
-
+import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import styles from "../admin.module.css";
 
 export default function AnalyticsPage() {
+    const [stats, setStats] = useState(null);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
+
+    const fetchStats = useCallback(async () => {
+        setLoading(true);
+        try {
+            const res = await fetch('/api/admin/stats');
+            const data = await res.json();
+            if (data.success) {
+                setStats(data.stats);
+            } else {
+                setError(data.error);
+            }
+        } catch (err) {
+            console.error('Error fetching analytics:', err);
+            setError('Failed to connect to analytics API');
+        } finally {
+            setLoading(false);
+        }
+    }, []);
+
+    useEffect(() => {
+        fetchStats();
+    }, [fetchStats]);
+
+    if (loading) return (
+        <div className={styles.adminLayout}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh', width: '100%' }}>
+                <div className="spinner"></div>
+                <p style={{ marginLeft: '12px' }}>Loading analytics...</p>
+            </div>
+        </div>
+    );
+
     return (
         <div className={styles.adminLayout}>
             {/* Sidebar */}
@@ -63,26 +97,19 @@ export default function AnalyticsPage() {
                         </Link>
                     </div>
                 </nav>
-
-                <div className={styles.sidebarFooter}>
-                    <div className={styles.userInfo}>
-                        <div className={styles.userAvatar}>AD</div>
-                        <div className={styles.userDetails}>
-                            <div className={styles.userName}>Admin User</div>
-                            <div className={styles.userRole}>Administrator</div>
-                        </div>
-                    </div>
-                </div>
             </aside>
 
             {/* Main Content */}
             <main className={styles.adminMain}>
                 <div className={styles.pageHeader}>
-                    <div>
-                        <h1 className={styles.pageTitle}>System Analytics</h1>
-                        <p className={styles.pageSubtitle}>
-                            Overview of system performance, writer distribution, and quality metrics.
-                        </p>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
+                        <div>
+                            <h1 className={styles.pageTitle}>System Analytics</h1>
+                            <p className={styles.pageSubtitle}>
+                                Overview of system performance, writer distribution, and quality metrics.
+                            </p>
+                        </div>
+                        <button onClick={fetchStats} className="btn btn-ghost">Refresh</button>
                     </div>
                 </div>
 
@@ -96,24 +123,9 @@ export default function AnalyticsPage() {
                                 </svg>
                             </div>
                         </div>
-                        <div className={styles.statValue}>88.4%</div>
+                        <div className={styles.statValue}>{stats?.avgIntegrity}%</div>
                         <div className={`${styles.statChange} ${styles.positive}`}>
-                            <span>↑ 2.1%</span> vs last month
-                        </div>
-                    </div>
-
-                    <div className={styles.statCard}>
-                        <div className={styles.statHeader}>
-                            <span className={styles.statLabel}>Writer Quality Index</span>
-                            <div className={`${styles.statIcon} ${styles.success}`}>
-                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" width="20" height="20">
-                                    <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 18 9 11.25l4.5 4.5L21.75 7.5M21.75 7.5h-5.25m5.25 0v5.25" />
-                                </svg>
-                            </div>
-                        </div>
-                        <div className={styles.statValue}>92/100</div>
-                        <div className={`${styles.statChange} ${styles.positive}`}>
-                            <span>↑ 4.5 pts</span> this week
+                            <span>System Average</span>
                         </div>
                     </div>
 
@@ -126,9 +138,9 @@ export default function AnalyticsPage() {
                                 </svg>
                             </div>
                         </div>
-                        <div className={styles.statValue}>12.5%</div>
-                        <div className={`${styles.statChange} ${styles.negative}`}>
-                            <span>↑ 0.8%</span> slight increase
+                        <div className={styles.statValue}>{stats?.aiRate}%</div>
+                        <div className={`${styles.statChange} ${parseFloat(stats?.aiRate) > 15 ? styles.negative : styles.positive}`}>
+                            <span>{parseFloat(stats?.aiRate) > 15 ? 'Attention required' : 'Stable levels'}</span>
                         </div>
                     </div>
 
@@ -141,9 +153,24 @@ export default function AnalyticsPage() {
                                 </svg>
                             </div>
                         </div>
-                        <div className={styles.statValue}>96.2%</div>
+                        <div className={styles.statValue}>{stats?.completionRate}%</div>
                         <div className={`${styles.statChange} ${styles.positive}`}>
                             <span>High efficiency</span>
+                        </div>
+                    </div>
+
+                    <div className={styles.statCard}>
+                        <div className={styles.statHeader}>
+                            <span className={styles.statLabel}>Total Writers</span>
+                            <div className={`${styles.statIcon} ${styles.success}`}>
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" width="20" height="20">
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M15 19.128a9.38 9.38 0 0 0 2.625.372 9.337 9.337 0 0 0 4.121-.952 4.125 4.125 0 0 0-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 0 1 8.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0 1 11.964-3.07M12 6.375a3.375 3.375 0 1 1-6.75 0 3.375 3.375 0 0 1 6.75 0Zm8.25 2.25a2.625 2.625 0 1 1-5.25 0 2.625 2.625 0 0 1 5.25 0Z" />
+                                </svg>
+                            </div>
+                        </div>
+                        <div className={styles.statValue}>{stats?.totalWriters}</div>
+                        <div className={`${styles.statChange} ${styles.positive}`}>
+                            <span>Active ecosystem</span>
                         </div>
                     </div>
                 </div>
@@ -151,34 +178,34 @@ export default function AnalyticsPage() {
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-6)' }}>
                     <div className={styles.dataTableContainer}>
                         <div className={styles.tableHeader}>
-                            <h2 className={styles.tableTitle}>Writer Level Distribution</h2>
+                            <h2 className={styles.tableTitle}>Writer Performance Distribution</h2>
                         </div>
                         <div style={{ padding: '24px' }}>
                             <div style={{ marginBottom: '16px' }}>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', fontSize: '13px' }}>
-                                    <span>Expert</span>
-                                    <span>24%</span>
+                                    <span>High Performers (Expert)</span>
+                                    <span>{stats?.distribution.expert}%</span>
                                 </div>
                                 <div className={styles.scoreBar} style={{ width: '100%', height: '8px' }}>
-                                    <div className={styles.scoreFill} style={{ width: '24%', background: 'var(--primary-600)' }}></div>
+                                    <div className={styles.scoreFill} style={{ width: `${stats?.distribution.expert}%`, background: 'var(--primary-600)' }}></div>
                                 </div>
                             </div>
                             <div style={{ marginBottom: '16px' }}>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', fontSize: '13px' }}>
-                                    <span>Senior</span>
-                                    <span>48%</span>
+                                    <span>Standard (Senior)</span>
+                                    <span>{stats?.distribution.senior}%</span>
                                 </div>
                                 <div className={styles.scoreBar} style={{ width: '100%', height: '8px' }}>
-                                    <div className={styles.scoreFill} style={{ width: '48%', background: 'var(--primary-400)' }}></div>
+                                    <div className={styles.scoreFill} style={{ width: `${stats?.distribution.senior}%`, background: 'var(--primary-400)' }}></div>
                                 </div>
                             </div>
                             <div style={{ marginBottom: '16px' }}>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', fontSize: '13px' }}>
-                                    <span>Junior</span>
-                                    <span>28%</span>
+                                    <span>Development Needed (Junior)</span>
+                                    <span>{stats?.distribution.junior}%</span>
                                 </div>
                                 <div className={styles.scoreBar} style={{ width: '100%', height: '8px' }}>
-                                    <div className={styles.scoreFill} style={{ width: '28%', background: 'var(--primary-200)' }}></div>
+                                    <div className={styles.scoreFill} style={{ width: `${stats?.distribution.junior}%`, background: 'var(--primary-200)' }}></div>
                                 </div>
                             </div>
                         </div>
@@ -186,33 +213,18 @@ export default function AnalyticsPage() {
 
                     <div className={styles.dataTableContainer}>
                         <div className={styles.tableHeader}>
-                            <h2 className={styles.tableTitle}>Content Category Trends</h2>
+                            <h2 className={styles.tableTitle}>System Health Summary</h2>
                         </div>
                         <div style={{ padding: '24px' }}>
-                            {/* Placeholder for a trend visualization */}
-                            <div style={{ height: '120px', display: 'flex', alignItems: 'flex-end', gap: '12px', paddingBottom: '20px', borderBottom: '1px solid var(--border-light)' }}>
-                                <div style={{ flex: 1, background: 'var(--bg-secondary)', height: '100%', borderRadius: '4px', position: 'relative' }}>
-                                    <div style={{ position: 'absolute', bottom: 0, width: '100%', height: '60%', background: 'var(--primary-500)', borderRadius: '4px' }}></div>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                                <div style={{ padding: '12px', borderRadius: '8px', background: 'var(--bg-secondary)', border: '1px solid var(--border-light)' }}>
+                                    <div style={{ fontWeight: 600, fontSize: '14px', marginBottom: '4px' }}>Live Assignments</div>
+                                    <div style={{ fontSize: '24px', fontWeight: 700 }}>{stats?.totalAssignments}</div>
                                 </div>
-                                <div style={{ flex: 1, background: 'var(--bg-secondary)', height: '100%', borderRadius: '4px', position: 'relative' }}>
-                                    <div style={{ position: 'absolute', bottom: 0, width: '100%', height: '80%', background: 'var(--primary-500)', borderRadius: '4px' }}></div>
+                                <div style={{ padding: '12px', borderRadius: '8px', background: 'var(--bg-secondary)', border: '1px solid var(--border-light)' }}>
+                                    <div style={{ fontWeight: 600, fontSize: '14px', marginBottom: '4px' }}>Integrity Status</div>
+                                    <div style={{ color: 'var(--success-600)', fontWeight: 600 }}>Optimal</div>
                                 </div>
-                                <div style={{ flex: 1, background: 'var(--bg-secondary)', height: '100%', borderRadius: '4px', position: 'relative' }}>
-                                    <div style={{ position: 'absolute', bottom: 0, width: '100%', height: '40%', background: 'var(--primary-500)', borderRadius: '4px' }}></div>
-                                </div>
-                                <div style={{ flex: 1, background: 'var(--bg-secondary)', height: '100%', borderRadius: '4px', position: 'relative' }}>
-                                    <div style={{ position: 'absolute', bottom: 0, width: '100%', height: '90%', background: 'var(--primary-500)', borderRadius: '4px' }}></div>
-                                </div>
-                                <div style={{ flex: 1, background: 'var(--bg-secondary)', height: '100%', borderRadius: '4px', position: 'relative' }}>
-                                    <div style={{ position: 'absolute', bottom: 0, width: '100%', height: '55%', background: 'var(--primary-500)', borderRadius: '4px' }}></div>
-                                </div>
-                            </div>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '8px', fontSize: '10px', color: 'var(--text-tertiary)' }}>
-                                <span>Academic</span>
-                                <span>Technical</span>
-                                <span>Creative</span>
-                                <span>SEO</span>
-                                <span>Business</span>
                             </div>
                         </div>
                     </div>

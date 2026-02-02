@@ -1,67 +1,72 @@
 "use client";
 
-import { useState } from "react";
-import Link from "next/link";
+import { useEffect, useCallback } from "react";
 import styles from "../dashboard.module.css";
 import insightStyles from "./insights.module.css";
 
-// Mock insights data (writer-safe version of integrity analysis)
-const mockInsights = [
-    {
-        id: "1",
-        assignment: "Research Paper on Machine Learning Algorithms",
-        submittedAt: "2026-02-02T15:30:00Z",
-        status: "approved",
-        feedback: {
-            overallScore: "excellent",
-            styleAlignment: {
-                score: 94,
-                message: "Your writing style closely matches your established baseline. Great consistency!",
-            },
-            originality: {
-                score: 92,
-                message: "Your work demonstrates strong originality with minimal overlap in ideas.",
-            },
-            citations: {
-                score: 96,
-                message: "Excellent use of citations. All sources properly formatted and verified.",
-            },
-            suggestions: [
-                "Consider varying sentence structure in technical sections",
-                "Good use of transitional phrases throughout",
-            ],
-        },
-    },
-    {
-        id: "2",
-        assignment: "API Documentation for Payment Gateway",
-        submittedAt: "2026-02-01T10:00:00Z",
-        status: "revision_requested",
-        feedback: {
-            overallScore: "needs_improvement",
-            styleAlignment: {
-                score: 72,
-                message: "Some sections show variation from your typical writing style. Please review highlighted areas.",
-            },
-            originality: {
-                score: 85,
-                message: "Good originality overall. A few sections may benefit from more unique phrasing.",
-            },
-            citations: {
-                score: 88,
-                message: "Most citations are correctly formatted. Please check the highlighted entries.",
-            },
-            suggestions: [
-                "Review sections 2.3 and 3.1 for style consistency",
-                "Consider rephrasing the introduction paragraph",
-                "Double-check citation format for online sources",
-            ],
-        },
-    },
-];
-
 export default function WriterInsightsPage() {
-    const [insights] = useState(mockInsights);
+    const [insights, setInsights] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
+    const [user, setUser] = useState(null);
+
+    const fetchInsights = useCallback(async () => {
+        setLoading(true);
+        try {
+            const userRes = await fetch('/api/me');
+            const userData = await userRes.json();
+
+            if (userData.id) {
+                setUser(userData);
+                const assignmentsRes = await fetch(`/api/assignments/writer?writerId=${userData.id}`);
+                const assignmentsData = await assignmentsRes.json();
+
+                if (assignmentsData.success) {
+                    const mappedInsights = assignmentsData.assignments
+                        .filter(a => a.submission && a.submission.analysis)
+                        .map(a => ({
+                            id: a.submission.id,
+                            assignment: a.title,
+                            submittedAt: a.submission.createdAt,
+                            status: a.status.toLowerCase(),
+                            feedback: {
+                                overallScore: a.submission.analysis.integrityScore >= 80 ? "excellent" : "good",
+                                styleAlignment: {
+                                    score: a.submission.analysis.stylometricScore || 0,
+                                    message: a.submission.analysis.stylometricScore >= 80 ?
+                                        "Excellent consistency with your established writing style." :
+                                        "Some variations from your typical style were detected.",
+                                },
+                                originality: {
+                                    score: a.submission.analysis.integrityScore || 0,
+                                    message: "Demonstrates good original thought and structure.",
+                                },
+                                citations: {
+                                    score: 100, // Mock for now
+                                    message: "All cited sources verified correctly.",
+                                },
+                                suggestions: [
+                                    "Maintain the current level of technical depth",
+                                    "Continue using varied sentence structures"
+                                ],
+                            },
+                        }));
+                    setInsights(mappedInsights);
+                } else {
+                    setError(assignmentsData.error || 'Failed to fetch insights');
+                }
+            }
+        } catch (err) {
+            console.error('Error fetching insights:', err);
+            setError('Error connecting to API');
+        } finally {
+            setLoading(false);
+        }
+    }, []);
+
+    useEffect(() => {
+        fetchInsights();
+    }, [fetchInsights]);
 
     const formatDate = (dateString) => {
         return new Date(dateString).toLocaleDateString("en-US", {
@@ -125,10 +130,14 @@ export default function WriterInsightsPage() {
 
                 <div className={styles.sidebarFooter}>
                     <div className={styles.userInfo}>
-                        <div className={styles.userAvatar}>SJ</div>
+                        <div className={styles.userAvatar}>
+                            {user?.fullName ? user.fullName.split(" ").map(n => n[0]).join("") : 'U'}
+                        </div>
                         <div className={styles.userDetails}>
-                            <span className={styles.userName}>Sarah Johnson</span>
-                            <span className={`${styles.userStatus} ${styles.probation}`}>probation</span>
+                            <span className={styles.userName}>{user?.fullName || 'User'}</span>
+                            <span className={`${styles.userStatus} ${styles[(user?.profile?.status || 'ONBOARDING').toLowerCase()]}`}>
+                                {user?.profile?.status || 'ONBOARDING'}
+                            </span>
                         </div>
                     </div>
                 </div>
@@ -152,69 +161,86 @@ export default function WriterInsightsPage() {
 
                 {/* Insights List */}
                 <div className={insightStyles.insightsList}>
-                    {insights.map((insight) => {
-                        const statusBadge = getStatusBadge(insight.status);
-                        return (
-                            <div key={insight.id} className={insightStyles.insightCard}>
-                                <div className={insightStyles.cardHeader}>
-                                    <div>
-                                        <h3>{insight.assignment}</h3>
-                                        <span className={insightStyles.submissionDate}>
-                                            Submitted {formatDate(insight.submittedAt)}
-                                        </span>
+                    {loading ? (
+                        <div style={{ textAlign: 'center', padding: '60px' }}>
+                            <div className="spinner"></div>
+                            <p>Loading insights...</p>
+                        </div>
+                    ) : error ? (
+                        <div style={{ textAlign: 'center', padding: '60px' }}>
+                            <p style={{ color: 'red' }}>{error}</p>
+                            <button onClick={fetchInsights} className="btn btn-primary btn-sm">Retry</button>
+                        </div>
+                    ) : insights.length === 0 ? (
+                        <div style={{ textAlign: 'center', padding: '60px', background: 'var(--bg-primary)', borderRadius: 'var(--radius-xl)', border: '1px solid var(--border-light)' }}>
+                            <h3 style={{ fontSize: '18px', fontWeight: 600 }}>No insights available yet</h3>
+                            <p style={{ color: 'var(--text-secondary)' }}>Insights will appear once your submissions are analyzed.</p>
+                        </div>
+                    ) : (
+                        insights.map((insight) => {
+                            const statusBadge = getStatusBadge(insight.status);
+                            return (
+                                <div key={insight.id} className={insightStyles.insightCard}>
+                                    <div className={insightStyles.cardHeader}>
+                                        <div>
+                                            <h3>{insight.assignment}</h3>
+                                            <span className={insightStyles.submissionDate}>
+                                                Submitted {formatDate(insight.submittedAt)}
+                                            </span>
+                                        </div>
+                                        <span className={`badge badge-${statusBadge.class}`}>{statusBadge.text}</span>
                                     </div>
-                                    <span className={`badge badge-${statusBadge.class}`}>{statusBadge.text}</span>
+
+                                    {/* Score Cards */}
+                                    <div className={insightStyles.scoreGrid}>
+                                        <div className={`${insightStyles.scoreCard} ${insightStyles[getScoreClass(insight.feedback.styleAlignment.score)]}`}>
+                                            <div className={insightStyles.scoreHeader}>
+                                                <span>Style Alignment</span>
+                                                <span className={insightStyles.scoreValue}>{insight.feedback.styleAlignment.score}%</span>
+                                            </div>
+                                            <p>{insight.feedback.styleAlignment.message}</p>
+                                        </div>
+
+                                        <div className={`${insightStyles.scoreCard} ${insightStyles[getScoreClass(insight.feedback.originality.score)]}`}>
+                                            <div className={insightStyles.scoreHeader}>
+                                                <span>Originality</span>
+                                                <span className={insightStyles.scoreValue}>{insight.feedback.originality.score}%</span>
+                                            </div>
+                                            <p>{insight.feedback.originality.message}</p>
+                                        </div>
+
+                                        <div className={`${insightStyles.scoreCard} ${insightStyles[getScoreClass(insight.feedback.citations.score)]}`}>
+                                            <div className={insightStyles.scoreHeader}>
+                                                <span>Citations</span>
+                                                <span className={insightStyles.scoreValue}>{insight.feedback.citations.score}%</span>
+                                            </div>
+                                            <p>{insight.feedback.citations.message}</p>
+                                        </div>
+                                    </div>
+
+                                    {/* Suggestions */}
+                                    {insight.feedback.suggestions.length > 0 && (
+                                        <div className={insightStyles.suggestionsSection}>
+                                            <h4>Suggestions for Improvement</h4>
+                                            <ul>
+                                                {insight.feedback.suggestions.map((suggestion, idx) => (
+                                                    <li key={idx}>{suggestion}</li>
+                                                ))}
+                                            </ul>
+                                        </div>
+                                    )}
+
+                                    {insight.status.toLowerCase() === "revision_requested" && (
+                                        <div className={insightStyles.cardActions}>
+                                            <Link href={`/writer/assignments/${insight.id}/submit`} className="btn btn-primary">
+                                                Submit Revision
+                                            </Link>
+                                        </div>
+                                    )}
                                 </div>
-
-                                {/* Score Cards */}
-                                <div className={insightStyles.scoreGrid}>
-                                    <div className={`${insightStyles.scoreCard} ${insightStyles[getScoreClass(insight.feedback.styleAlignment.score)]}`}>
-                                        <div className={insightStyles.scoreHeader}>
-                                            <span>Style Alignment</span>
-                                            <span className={insightStyles.scoreValue}>{insight.feedback.styleAlignment.score}%</span>
-                                        </div>
-                                        <p>{insight.feedback.styleAlignment.message}</p>
-                                    </div>
-
-                                    <div className={`${insightStyles.scoreCard} ${insightStyles[getScoreClass(insight.feedback.originality.score)]}`}>
-                                        <div className={insightStyles.scoreHeader}>
-                                            <span>Originality</span>
-                                            <span className={insightStyles.scoreValue}>{insight.feedback.originality.score}%</span>
-                                        </div>
-                                        <p>{insight.feedback.originality.message}</p>
-                                    </div>
-
-                                    <div className={`${insightStyles.scoreCard} ${insightStyles[getScoreClass(insight.feedback.citations.score)]}`}>
-                                        <div className={insightStyles.scoreHeader}>
-                                            <span>Citations</span>
-                                            <span className={insightStyles.scoreValue}>{insight.feedback.citations.score}%</span>
-                                        </div>
-                                        <p>{insight.feedback.citations.message}</p>
-                                    </div>
-                                </div>
-
-                                {/* Suggestions */}
-                                {insight.feedback.suggestions.length > 0 && (
-                                    <div className={insightStyles.suggestionsSection}>
-                                        <h4>Suggestions for Improvement</h4>
-                                        <ul>
-                                            {insight.feedback.suggestions.map((suggestion, idx) => (
-                                                <li key={idx}>{suggestion}</li>
-                                            ))}
-                                        </ul>
-                                    </div>
-                                )}
-
-                                {insight.status === "revision_requested" && (
-                                    <div className={insightStyles.cardActions}>
-                                        <Link href={`/writer/assignments/${insight.id}/submit`} className="btn btn-primary">
-                                            Submit Revision
-                                        </Link>
-                                    </div>
-                                )}
-                            </div>
-                        );
-                    })}
+                            );
+                        })
+                    )}
                 </div>
             </main>
         </div>

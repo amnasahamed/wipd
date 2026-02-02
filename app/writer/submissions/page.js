@@ -1,63 +1,60 @@
 "use client";
 
-import { useState } from "react";
-import Link from "next/link";
+import { useEffect, useCallback } from "react";
 import styles from "../dashboard.module.css";
 
-// Mock data
-const mockWriter = {
-    name: "Sarah Johnson",
-    status: "probation",
-    email: "sarah.j@example.com",
-};
-
-const mockSubmissions = [
-    {
-        id: "s1",
-        title: "Case Study on Fintech Adoption",
-        submittedAt: "2026-02-02T10:05:00Z",
-        integrityScore: 95,
-        aiProbability: "2%",
-        plagiarism: "0%",
-        status: "under_review",
-        wordCount: 4000,
-    },
-    {
-        id: "s2",
-        title: "Whitepaper on Blockchain Security",
-        submittedAt: "2026-01-25T17:00:00Z",
-        integrityScore: 98,
-        aiProbability: "1%",
-        plagiarism: "0%",
-        status: "approved",
-        wordCount: 5000,
-    },
-    {
-        id: "s3",
-        title: "Deep Learning Foundations - Essay",
-        submittedAt: "2026-01-20T14:30:00Z",
-        integrityScore: 72,
-        aiProbability: "24%",
-        plagiarism: "4%",
-        status: "flagged",
-        wordCount: 2500,
-    },
-    {
-        id: "s4",
-        title: "History of AI Development",
-        submittedAt: "2026-01-15T09:00:00Z",
-        integrityScore: 88,
-        aiProbability: "8%",
-        plagiarism: "2%",
-        status: "approved",
-        wordCount: 3200,
-    }
-];
-
 export default function SubmissionsPage() {
+    const [submissions, setSubmissions] = useState([]);
     const [searchQuery, setSearchQuery] = useState("");
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
+    const [user, setUser] = useState(null);
 
-    const filteredSubmissions = mockSubmissions.filter((item) => {
+    const fetchSubmissions = useCallback(async () => {
+        setLoading(true);
+        try {
+            const userRes = await fetch('/api/me');
+            const userData = await userRes.json();
+
+            if (userData.id) {
+                setUser(userData);
+                const assignmentsRes = await fetch(`/api/assignments/writer?writerId=${userData.id}`);
+                const assignmentsData = await assignmentsRes.json();
+
+                if (assignmentsData.success) {
+                    // Filter for assignments that have submissions
+                    const subs = assignmentsData.assignments
+                        .filter(a => a.submission)
+                        .map(a => ({
+                            id: a.submission.id,
+                            title: a.title,
+                            submittedAt: a.submission.createdAt,
+                            integrityScore: a.submission.analysis?.integrityScore || 0,
+                            aiProbability: `${a.submission.analysis?.aiRiskScore || 0}%`,
+                            plagiarism: "0%", // Placeholder for now
+                            status: a.status.toLowerCase(),
+                            wordCount: a.wordCount
+                        }));
+                    setSubmissions(subs);
+                } else {
+                    setError(assignmentsData.error || 'Failed to fetch submissions');
+                }
+            } else {
+                setError('User not found');
+            }
+        } catch (err) {
+            setError('Error connecting to API');
+            console.error(err);
+        } finally {
+            setLoading(false);
+        }
+    }, []);
+
+    useEffect(() => {
+        fetchSubmissions();
+    }, [fetchSubmissions]);
+
+    const filteredSubmissions = submissions.filter((item) => {
         return item.title.toLowerCase().includes(searchQuery.toLowerCase());
     });
 
@@ -123,11 +120,13 @@ export default function SubmissionsPage() {
 
                 <div className={styles.sidebarFooter}>
                     <div className={styles.userInfo}>
-                        <div className={styles.userAvatar}>SJ</div>
+                        <div className={styles.userAvatar}>
+                            {user?.fullName ? user.fullName.split(" ").map(n => n[0]).join("") : 'U'}
+                        </div>
                         <div className={styles.userDetails}>
-                            <span className={styles.userName}>{mockWriter.name}</span>
-                            <span className={`${styles.userStatus} ${styles[mockWriter.status]}`}>
-                                {mockWriter.status}
+                            <span className={styles.userName}>{user?.fullName || 'User'}</span>
+                            <span className={`${styles.userStatus} ${styles[(user?.profile?.status || 'ONBOARDING').toLowerCase()]}`}>
+                                {user?.profile?.status || 'ONBOARDING'}
                             </span>
                         </div>
                     </div>
@@ -164,63 +163,75 @@ export default function SubmissionsPage() {
                         </div>
                     </div>
 
-                    <div className={styles.dataTableContainer} style={{ background: 'var(--bg-primary)', borderRadius: 'var(--radius-xl)', border: '1px solid var(--border-light)', overflow: 'hidden' }}>
-                        <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
-                            <thead>
-                                <tr style={{ borderBottom: '1px solid var(--border-light)', background: 'var(--bg-secondary)' }}>
-                                    <th style={{ padding: '16px 24px', fontSize: '12px', fontWeight: 600, color: 'var(--text-secondary)' }}>SUBMISSION TITLE</th>
-                                    <th style={{ padding: '16px 24px', fontSize: '12px', fontWeight: 600, color: 'var(--text-secondary)' }}>DATE SUBMITTED</th>
-                                    <th style={{ padding: '16px 24px', fontSize: '12px', fontWeight: 600, color: 'var(--text-secondary)' }}>INTEGRITY</th>
-                                    <th style={{ padding: '16px 24px', fontSize: '12px', fontWeight: 600, color: 'var(--text-secondary)' }}>AI/PLAGIARISM</th>
-                                    <th style={{ padding: '16px 24px', fontSize: '12px', fontWeight: 600, color: 'var(--text-secondary)' }}>STATUS</th>
-                                    <th style={{ padding: '16px 24px', fontSize: '12px', fontWeight: 600, color: 'var(--text-secondary)' }}>ACTIONS</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {filteredSubmissions.map((item) => (
-                                    <tr key={item.id} style={{ borderBottom: '1px solid var(--border-light)' }}>
-                                        <td style={{ padding: '20px 24px' }}>
-                                            <div style={{ fontWeight: 500, color: 'var(--text-primary)' }}>{item.title}</div>
-                                            <div style={{ fontSize: '12px', color: 'var(--text-tertiary)' }}>{item.wordCount.toLocaleString()} words</div>
-                                        </td>
-                                        <td style={{ padding: '20px 24px', color: 'var(--text-secondary)', fontSize: '14px' }}>
-                                            {formatDate(item.submittedAt)}
-                                        </td>
-                                        <td style={{ padding: '20px 24px' }}>
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                                <span style={{
-                                                    fontWeight: 700,
-                                                    fontSize: '16px',
-                                                    color: getScoreColor(item.integrityScore),
-                                                    background: `${getScoreColor(item.integrityScore)}15`,
-                                                    padding: '4px 8px',
-                                                    borderRadius: '4px'
-                                                }}>
-                                                    {item.integrityScore}
-                                                </span>
-                                            </div>
-                                        </td>
-                                        <td style={{ padding: '20px 24px' }}>
-                                            <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
-                                                AI: <span style={{ fontWeight: 500 }}>{item.aiProbability}</span><br />
-                                                Plag: <span style={{ fontWeight: 500 }}>{item.plagiarism}</span>
-                                            </div>
-                                        </td>
-                                        <td style={{ padding: '20px 24px' }}>
-                                            <span className={`badge badge-${getStatusBadge(item.status)}`}>
-                                                {item.status.replace("_", " ")}
-                                            </span>
-                                        </td>
-                                        <td style={{ padding: '20px 24px' }}>
-                                            <Link href={`/writer/insights?submissionId=${item.id}`} className="btn btn-ghost btn-sm" style={{ padding: '4px 8px' }}>
-                                                View Report
-                                            </Link>
-                                        </td>
+                    {loading ? (
+                        <div style={{ textAlign: 'center', padding: '60px' }}>
+                            <div className="spinner"></div>
+                            <p>Loading submissions...</p>
+                        </div>
+                    ) : error ? (
+                        <div style={{ textAlign: 'center', padding: '60px' }}>
+                            <p style={{ color: 'red' }}>{error}</p>
+                            <button onClick={fetchSubmissions} className="btn btn-primary btn-sm">Retry</button>
+                        </div>
+                    ) : (
+                        <div className={styles.dataTableContainer} style={{ background: 'var(--bg-primary)', borderRadius: 'var(--radius-xl)', border: '1px solid var(--border-light)', overflow: 'hidden' }}>
+                            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+                                <thead>
+                                    <tr style={{ borderBottom: '1px solid var(--border-light)', background: 'var(--bg-secondary)' }}>
+                                        <th style={{ padding: '16px 24px', fontSize: '12px', fontWeight: 600, color: 'var(--text-secondary)' }}>SUBMISSION TITLE</th>
+                                        <th style={{ padding: '16px 24px', fontSize: '12px', fontWeight: 600, color: 'var(--text-secondary)' }}>DATE SUBMITTED</th>
+                                        <th style={{ padding: '16px 24px', fontSize: '12px', fontWeight: 600, color: 'var(--text-secondary)' }}>INTEGRITY</th>
+                                        <th style={{ padding: '16px 24px', fontSize: '12px', fontWeight: 600, color: 'var(--text-secondary)' }}>AI/PLAGIARISM</th>
+                                        <th style={{ padding: '16px 24px', fontSize: '12px', fontWeight: 600, color: 'var(--text-secondary)' }}>STATUS</th>
+                                        <th style={{ padding: '16px 24px', fontSize: '12px', fontWeight: 600, color: 'var(--text-secondary)' }}>ACTIONS</th>
                                     </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    </div>
+                                </thead>
+                                <tbody>
+                                    {filteredSubmissions.map((item) => (
+                                        <tr key={item.id} style={{ borderBottom: '1px solid var(--border-light)' }}>
+                                            <td style={{ padding: '20px 24px' }}>
+                                                <div style={{ fontWeight: 500, color: 'var(--text-primary)' }}>{item.title}</div>
+                                                <div style={{ fontSize: '12px', color: 'var(--text-tertiary)' }}>{(item.wordCount || 0).toLocaleString()} words</div>
+                                            </td>
+                                            <td style={{ padding: '20px 24px', color: 'var(--text-secondary)', fontSize: '14px' }}>
+                                                {formatDate(item.submittedAt)}
+                                            </td>
+                                            <td style={{ padding: '20px 24px' }}>
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                                    <span style={{
+                                                        fontWeight: 700,
+                                                        fontSize: '16px',
+                                                        color: getScoreColor(item.integrityScore),
+                                                        background: `${getScoreColor(item.integrityScore)}15`,
+                                                        padding: '4px 8px',
+                                                        borderRadius: '4px'
+                                                    }}>
+                                                        {item.integrityScore}
+                                                    </span>
+                                                </div>
+                                            </td>
+                                            <td style={{ padding: '20px 24px' }}>
+                                                <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
+                                                    AI: <span style={{ fontWeight: 500 }}>{item.aiProbability}</span><br />
+                                                    Plag: <span style={{ fontWeight: 500 }}>{item.plagiarism}</span>
+                                                </div>
+                                            </td>
+                                            <td style={{ padding: '20px 24px' }}>
+                                                <span className={`badge badge-${getStatusBadge(item.status)}`}>
+                                                    {item.status.replace("_", " ")}
+                                                </span>
+                                            </td>
+                                            <td style={{ padding: '20px 24px' }}>
+                                                <Link href={`/writer/insights?submissionId=${item.id}`} className="btn btn-ghost btn-sm" style={{ padding: '4px 8px' }}>
+                                                    View Report
+                                                </Link>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    )}
 
                     {filteredSubmissions.length === 0 && (
                         <div style={{ textAlign: 'center', padding: '60px', background: 'var(--bg-primary)', borderRadius: 'var(--radius-xl)', border: '1px solid var(--border-light)' }}>

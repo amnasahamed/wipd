@@ -1,118 +1,68 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import styles from "./admin.module.css";
 
-// Mock data for applications
-const mockApplications = [
-    {
-        id: "1",
-        name: "Sarah Johnson",
-        email: "sarah.j@example.com",
-        education: "Master's Degree",
-        workTypes: ["academic", "technical"],
-        grammarScore: 92,
-        policyScore: 88,
-        samplesCount: 3,
-        status: "pending",
-        appliedAt: "2026-02-01",
-    },
-    {
-        id: "2",
-        name: "Michael Chen",
-        email: "m.chen@example.com",
-        education: "Ph.D.",
-        workTypes: ["academic"],
-        grammarScore: 96,
-        policyScore: 100,
-        samplesCount: 2,
-        status: "approved",
-        appliedAt: "2026-01-30",
-    },
-    {
-        id: "3",
-        name: "Emily Rodriguez",
-        email: "emily.r@example.com",
-        education: "Bachelor's Degree",
-        workTypes: ["technical"],
-        grammarScore: 78,
-        policyScore: 84,
-        samplesCount: 3,
-        status: "pending",
-        appliedAt: "2026-02-02",
-    },
-    {
-        id: "4",
-        name: "David Park",
-        email: "d.park@example.com",
-        education: "Master's Degree",
-        workTypes: ["academic", "technical"],
-        grammarScore: 65,
-        policyScore: 72,
-        samplesCount: 2,
-        status: "rejected",
-        appliedAt: "2026-01-28",
-    },
-    {
-        id: "5",
-        name: "Lisa Thompson",
-        email: "lisa.t@example.com",
-        education: "Bachelor's Degree",
-        workTypes: ["academic"],
-        grammarScore: 88,
-        policyScore: 92,
-        samplesCount: 3,
-        status: "probation",
-        appliedAt: "2026-01-25",
-    },
-];
-
-// Stats data
-const statsData = [
-    { label: "Pending Applications", value: 12, change: "+3", positive: true, icon: "clock", color: "warning" },
-    { label: "Active Writers", value: 48, change: "+8", positive: true, icon: "users", color: "success" },
-    { label: "On Probation", value: 5, change: "-2", positive: true, icon: "alert", color: "primary" },
-    { label: "Rejected (30d)", value: 7, change: "+1", positive: false, icon: "x", color: "danger" },
-];
-
 export default function AdminDashboard() {
-    const [applications, setApplications] = useState(mockApplications);
+    const [applications, setApplications] = useState([]);
+    const [stats, setStats] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
     const [searchTerm, setSearchTerm] = useState("");
     const [statusFilter, setStatusFilter] = useState("all");
 
+    const fetchData = useCallback(async () => {
+        setLoading(true);
+        try {
+            // Get stats
+            const statsRes = await fetch('/api/admin/stats');
+            const statsDataObj = await statsRes.json();
+
+            if (statsDataObj.success) {
+                const s = statsDataObj.stats;
+                setStats([
+                    { label: "Pending Applications", value: s.totalAssignments, change: "Live", positive: true, icon: "clock", color: "warning" },
+                    { label: "Active Writers", value: s.totalWriters, change: "Live", positive: true, icon: "users", color: "success" },
+                    { label: "Completion Rate", value: `${s.completionRate}%`, change: "Optimal", positive: true, icon: "check", color: "primary" },
+                    { label: "Avg Integrity", value: `${s.avgIntegrity}%`, change: "Stable", positive: true, icon: "shield", color: "success" },
+                ]);
+            }
+
+            // Get recent applications
+            const appsRes = await fetch('/api/applications');
+            const appsData = await appsRes.json();
+            if (appsData.success) {
+                setApplications(appsData.applications.slice(0, 5));
+            }
+        } catch (err) {
+            console.error('Error fetching dashboard data:', err);
+            setError('Failed to load dashboard');
+        } finally {
+            setLoading(false);
+        }
+    }, []);
+
+    useEffect(() => {
+        fetchData();
+    }, [fetchData]);
+
     // Filter applications
     const filteredApplications = applications.filter((app) => {
+        const name = app.fullName || "";
+        const email = app.email || "";
         const matchesSearch =
-            app.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            app.email.toLowerCase().includes(searchTerm.toLowerCase());
-        const matchesStatus = statusFilter === "all" || app.status === statusFilter;
+            name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            email.toLowerCase().includes(searchTerm.toLowerCase());
+        const matchesStatus = statusFilter === "all" || (app.profile?.status || "").toLowerCase() === statusFilter.toLowerCase();
         return matchesSearch && matchesStatus;
     });
 
-    // Handle application actions
-    const handleApprove = (id) => {
-        setApplications((apps) =>
-            apps.map((app) => (app.id === id ? { ...app, status: "probation" } : app))
-        );
-    };
-
-    const handleReject = (id) => {
-        setApplications((apps) =>
-            apps.map((app) => (app.id === id ? { ...app, status: "rejected" } : app))
-        );
-    };
-
-    // Get initials for avatar
     const getInitials = (name) => {
-        return name
-            .split(" ")
-            .map((n) => n[0])
-            .join("")
-            .toUpperCase();
+        if (!name) return "U";
+        return name.split(" ").map((n) => n[0]).join("").toUpperCase();
     };
 
-    // Get score class
     const getScoreClass = (score) => {
         if (score >= 85) return "high";
         if (score >= 70) return "medium";
@@ -225,7 +175,7 @@ export default function AdminDashboard() {
 
                 {/* Stats Grid */}
                 <div className={styles.statsGrid}>
-                    {statsData.map((stat, index) => (
+                    {stats.map((stat, index) => (
                         <div key={index} className={styles.statCard}>
                             <div className={styles.statHeader}>
                                 <span className={styles.statLabel}>{stat.label}</span>
@@ -244,25 +194,21 @@ export default function AdminDashboard() {
                                             <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
                                         </svg>
                                     )}
-                                    {stat.icon === "alert" && (
+                                    {stat.icon === "check" && (
                                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                            <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
-                                            <line x1="12" y1="9" x2="12" y2="13"></line>
-                                            <line x1="12" y1="17" x2="12.01" y2="17"></line>
+                                            <path d="M20 6L9 17l-5-5"></path>
                                         </svg>
                                     )}
-                                    {stat.icon === "x" && (
+                                    {stat.icon === "shield" && (
                                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                            <circle cx="12" cy="12" r="10"></circle>
-                                            <line x1="15" y1="9" x2="9" y2="15"></line>
-                                            <line x1="9" y1="9" x2="15" y2="15"></line>
+                                            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
                                         </svg>
                                     )}
                                 </div>
                             </div>
                             <div className={styles.statValue}>{stat.value}</div>
                             <div className={`${styles.statChange} ${stat.positive ? styles.positive : styles.negative}`}>
-                                {stat.change} from last week
+                                {stat.change} status
                             </div>
                         </div>
                     ))}
@@ -312,21 +258,40 @@ export default function AdminDashboard() {
                             </tr>
                         </thead>
                         <tbody>
-                            {filteredApplications.map((app) => (
+                            {loading ? (
+                                <tr>
+                                    <td colSpan="8" style={{ textAlign: 'center', padding: '40px' }}>
+                                        <div className="spinner"></div>
+                                        <p>Loading applications...</p>
+                                    </td>
+                                </tr>
+                            ) : error ? (
+                                <tr>
+                                    <td colSpan="8" style={{ textAlign: 'center', padding: '40px', color: 'red' }}>
+                                        {error}
+                                    </td>
+                                </tr>
+                            ) : filteredApplications.length === 0 ? (
+                                <tr>
+                                    <td colSpan="8" style={{ textAlign: 'center', padding: '40px' }}>
+                                        No applications found.
+                                    </td>
+                                </tr>
+                            ) : filteredApplications.map((app) => (
                                 <tr key={app.id}>
                                     <td>
                                         <div className={styles.applicantInfo}>
-                                            <div className={styles.applicantAvatar}>{getInitials(app.name)}</div>
+                                            <div className={styles.applicantAvatar}>{getInitials(app.fullName)}</div>
                                             <div>
-                                                <div className={styles.applicantName}>{app.name}</div>
+                                                <div className={styles.applicantName}>{app.fullName}</div>
                                                 <div className={styles.applicantEmail}>{app.email}</div>
                                             </div>
                                         </div>
                                     </td>
-                                    <td>{app.education}</td>
+                                    <td>{app.profile?.education || 'N/A'}</td>
                                     <td>
                                         <div className="flex gap-1">
-                                            {app.workTypes.map((type) => (
+                                            {(app.profile?.workTypes || []).map((type) => (
                                                 <span key={type} className="badge badge-neutral">
                                                     {type}
                                                 </span>
@@ -337,28 +302,28 @@ export default function AdminDashboard() {
                                         <div className={styles.testScore}>
                                             <div className={styles.scoreBar}>
                                                 <div
-                                                    className={`${styles.scoreFill} ${styles[getScoreClass(app.grammarScore)]}`}
-                                                    style={{ width: `${app.grammarScore}%` }}
+                                                    className={`${styles.scoreFill} ${styles[getScoreClass(app.profile?.grammarScore || 0)]}`}
+                                                    style={{ width: `${app.profile?.grammarScore || 0}%` }}
                                                 ></div>
                                             </div>
-                                            <span className={styles.scoreText}>{app.grammarScore}%</span>
+                                            <span className={styles.scoreText}>{app.profile?.grammarScore || 0}%</span>
                                         </div>
                                     </td>
                                     <td>
                                         <div className={styles.testScore}>
                                             <div className={styles.scoreBar}>
                                                 <div
-                                                    className={`${styles.scoreFill} ${styles[getScoreClass(app.policyScore)]}`}
-                                                    style={{ width: `${app.policyScore}%` }}
+                                                    className={`${styles.scoreFill} ${styles[getScoreClass(app.profile?.policyScore || 0)]}`}
+                                                    style={{ width: `${app.profile?.policyScore || 0}%` }}
                                                 ></div>
                                             </div>
-                                            <span className={styles.scoreText}>{app.policyScore}%</span>
+                                            <span className={styles.scoreText}>{app.profile?.policyScore || 0}%</span>
                                         </div>
                                     </td>
-                                    <td>{app.samplesCount} files</td>
+                                    <td>{app.samples?.length || 0} files</td>
                                     <td>
-                                        <span className={`${styles.statusBadge} ${styles[app.status]}`}>
-                                            {app.status}
+                                        <span className={`${styles.statusBadge} ${styles[(app.profile?.status || 'PENDING').toLowerCase()]}`}>
+                                            {app.profile?.status || 'PENDING'}
                                         </span>
                                     </td>
                                     <td>
@@ -369,29 +334,6 @@ export default function AdminDashboard() {
                                                     <circle cx="12" cy="12" r="3"></circle>
                                                 </svg>
                                             </Link>
-                                            {app.status === "pending" && (
-                                                <>
-                                                    <button
-                                                        className={`${styles.actionBtn} ${styles.approve}`}
-                                                        onClick={() => handleApprove(app.id)}
-                                                        title="Approve"
-                                                    >
-                                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                                            <polyline points="20 6 9 17 4 12"></polyline>
-                                                        </svg>
-                                                    </button>
-                                                    <button
-                                                        className={`${styles.actionBtn} ${styles.reject}`}
-                                                        onClick={() => handleReject(app.id)}
-                                                        title="Reject"
-                                                    >
-                                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                                            <line x1="18" y1="6" x2="6" y2="18"></line>
-                                                            <line x1="6" y1="6" x2="18" y2="18"></line>
-                                                        </svg>
-                                                    </button>
-                                                </>
-                                            )}
                                         </div>
                                     </td>
                                 </tr>

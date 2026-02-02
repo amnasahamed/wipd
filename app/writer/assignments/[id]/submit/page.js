@@ -1,44 +1,55 @@
 "use client";
 
-import { useState, useRef } from "react";
-import Link from "next/link";
-import { useRouter, useParams } from "next/navigation";
+import { useEffect, useCallback } from "react";
 import styles from "../../../dashboard.module.css";
 import submitStyles from "./submit.module.css";
-
-// Mock assignment data
-const mockAssignment = {
-    id: "1",
-    title: "Research Paper on Machine Learning Algorithms",
-    category: "academic",
-    wordCount: 3000,
-    citationStyle: "APA (7th Edition)",
-    deadline: "2026-02-10T18:00:00Z",
-    brief: `Write a comprehensive research paper analyzing modern machine learning algorithms with focus on:
-
-1. Supervised learning methods (SVM, Random Forest, Neural Networks)
-2. Unsupervised learning approaches (K-means, PCA, Autoencoders)
-3. Comparative analysis of performance metrics
-4. Real-world application case studies
-
-Requirements:
-- Minimum 3000 words
-- APA 7th edition citations
-- At least 15 peer-reviewed sources
-- Include tables and figures where appropriate`,
-};
 
 export default function SubmitWorkPage() {
     const router = useRouter();
     const params = useParams();
     const fileInputRef = useRef(null);
 
+    const [assignment, setAssignment] = useState(null);
+    const [user, setUser] = useState(null);
     const [file, setFile] = useState(null);
     const [isDragging, setIsDragging] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
     const [showConfirmModal, setShowConfirmModal] = useState(false);
     const [declaration, setDeclaration] = useState(false);
     const [submitSuccess, setSubmitSuccess] = useState(false);
+
+    const fetchData = useCallback(async () => {
+        setLoading(true);
+        try {
+            // Get current user
+            const userRes = await fetch('/api/me');
+            const userData = await userRes.json();
+            if (userData.id) {
+                setUser(userData);
+            }
+
+            // Get assignment details
+            const assignmentRes = await fetch(`/api/assignments/${params.id}`);
+            const assignmentData = await assignmentRes.json();
+
+            if (assignmentData.success) {
+                setAssignment(assignmentData.assignment);
+            } else {
+                setError(assignmentData.error || 'Failed to fetch assignment');
+            }
+        } catch (err) {
+            setError('Error connecting to API');
+            console.error(err);
+        } finally {
+            setLoading(false);
+        }
+    }, [params.id]);
+
+    useEffect(() => {
+        fetchData();
+    }, [fetchData]);
 
     const handleDragOver = (e) => {
         e.preventDefault();
@@ -84,6 +95,7 @@ export default function SubmitWorkPage() {
     };
 
     const formatDeadline = (dateString) => {
+        if (!dateString) return "N/A";
         return new Date(dateString).toLocaleDateString("en-US", {
             weekday: "long",
             year: "numeric",
@@ -107,17 +119,19 @@ export default function SubmitWorkPage() {
             const formData = new FormData();
             formData.append("file", file);
             formData.append("assignmentId", params.id);
-            formData.append("writerId", "SJ123"); // Mock logged in writer
+            formData.append("writerId", user.id);
 
             const response = await fetch("/api/submissions/upload", {
                 method: "POST",
                 body: formData
             });
 
-            if (response.ok) {
+            const data = await response.json();
+
+            if (data.success) {
                 setSubmitSuccess(true);
             } else {
-                alert("Upload failed. Please try again.");
+                alert(data.error || "Upload failed. Please try again.");
             }
         } catch (error) {
             console.error("Upload error", error);
@@ -216,10 +230,14 @@ export default function SubmitWorkPage() {
 
                 <div className={styles.sidebarFooter}>
                     <div className={styles.userInfo}>
-                        <div className={styles.userAvatar}>SJ</div>
+                        <div className={styles.userAvatar}>
+                            {user?.fullName ? user.fullName.split(" ").map(n => n[0]).join("") : 'U'}
+                        </div>
                         <div className={styles.userDetails}>
-                            <span className={styles.userName}>Sarah Johnson</span>
-                            <span className={`${styles.userStatus} ${styles.probation}`}>probation</span>
+                            <span className={styles.userName}>{user?.fullName || 'User'}</span>
+                            <span className={`${styles.userStatus} ${styles[(user?.profile?.status || 'ONBOARDING').toLowerCase()]}`}>
+                                {user?.profile?.status || 'ONBOARDING'}
+                            </span>
                         </div>
                     </div>
                 </div>
@@ -238,34 +256,50 @@ export default function SubmitWorkPage() {
 
                 <div className={submitStyles.submitGrid}>
                     {/* Assignment Details */}
-                    <div className={submitStyles.assignmentPanel}>
-                        <div className={submitStyles.panelHeader}>
-                            <span className={`badge badge-${mockAssignment.category === "academic" ? "primary" : "secondary"}`}>
-                                {mockAssignment.category}
-                            </span>
-                            <h2>{mockAssignment.title}</h2>
+                    {loading ? (
+                        <div className={submitStyles.assignmentPanel}>
+                            <div className="spinner"></div>
+                            <p>Loading assignment details...</p>
                         </div>
+                    ) : error ? (
+                        <div className={submitStyles.assignmentPanel}>
+                            <p style={{ color: 'red' }}>{error}</p>
+                            <button onClick={fetchData} className="btn btn-primary btn-sm">Retry</button>
+                        </div>
+                    ) : assignment ? (
+                        <div className={submitStyles.assignmentPanel}>
+                            <div className={submitStyles.panelHeader}>
+                                <span className={`badge badge-${assignment.category === "academic" ? "primary" : "secondary"}`}>
+                                    {assignment.category}
+                                </span>
+                                <h2>{assignment.title}</h2>
+                            </div>
 
-                        <div className={submitStyles.assignmentMeta}>
-                            <div className={submitStyles.metaItem}>
-                                <span className={submitStyles.metaLabel}>Word Count</span>
-                                <span className={submitStyles.metaValue}>{mockAssignment.wordCount.toLocaleString()} words</span>
+                            <div className={submitStyles.assignmentMeta}>
+                                <div className={submitStyles.metaItem}>
+                                    <span className={submitStyles.metaLabel}>Word Count</span>
+                                    <span className={submitStyles.metaValue}>{(assignment.wordCount || 0).toLocaleString()} words</span>
+                                </div>
+                                <div className={submitStyles.metaItem}>
+                                    <span className={submitStyles.metaLabel}>Citation Style</span>
+                                    <span className={submitStyles.metaValue}>{assignment.citationStyle || 'APA 7th'}</span>
+                                </div>
+                                <div className={submitStyles.metaItem}>
+                                    <span className={submitStyles.metaLabel}>Deadline</span>
+                                    <span className={submitStyles.metaValue}>{formatDeadline(assignment.deadline)}</span>
+                                </div>
                             </div>
-                            <div className={submitStyles.metaItem}>
-                                <span className={submitStyles.metaLabel}>Citation Style</span>
-                                <span className={submitStyles.metaValue}>{mockAssignment.citationStyle}</span>
-                            </div>
-                            <div className={submitStyles.metaItem}>
-                                <span className={submitStyles.metaLabel}>Deadline</span>
-                                <span className={submitStyles.metaValue}>{formatDeadline(mockAssignment.deadline)}</span>
-                            </div>
-                        </div>
 
-                        <div className={submitStyles.briefSection}>
-                            <h3>Assignment Brief</h3>
-                            <pre className={submitStyles.briefText}>{mockAssignment.brief}</pre>
+                            <div className={submitStyles.briefSection}>
+                                <h3>Assignment Brief</h3>
+                                <pre className={submitStyles.briefText}>{assignment.notes || 'No notes provided.'}</pre>
+                            </div>
                         </div>
-                    </div>
+                    ) : (
+                        <div className={submitStyles.assignmentPanel}>
+                            <p>Assignment not found.</p>
+                        </div>
+                    )}
 
                     {/* Upload Section */}
                     <div className={submitStyles.uploadPanel}>

@@ -1,75 +1,51 @@
 "use client";
 
-import { useState } from "react";
-import Link from "next/link";
+import { useEffect, useCallback } from "react";
 import styles from "../dashboard.module.css";
 
-// Mock data
-const mockWriter = {
-    name: "Sarah Johnson",
-    status: "probation",
-    email: "sarah.j@example.com",
-};
-
-const mockAssignments = [
-    {
-        id: "1",
-        title: "Research Paper on Machine Learning Algorithms",
-        category: "academic",
-        wordCount: 3000,
-        deadline: "2026-02-10T18:00:00Z",
-        status: "assigned",
-        priority: "high",
-        reward: "$120.00",
-    },
-    {
-        id: "2",
-        title: "API Documentation for Payment Gateway",
-        category: "technical",
-        wordCount: 2000,
-        deadline: "2026-02-15T12:00:00Z",
-        status: "in_progress",
-        priority: "normal",
-        reward: "$85.00",
-    },
-    {
-        id: "3",
-        title: "Case Study on Fintech Adoption",
-        category: "academic",
-        wordCount: 4000,
-        deadline: "2026-02-08T09:00:00Z",
-        status: "submitted",
-        priority: "urgent",
-        reward: "$150.00",
-    },
-    {
-        id: "4",
-        title: "SEO Strategy for E-commerce Platform",
-        category: "technical",
-        wordCount: 1500,
-        deadline: "2026-02-20T10:00:00Z",
-        status: "assigned",
-        priority: "normal",
-        reward: "$60.00",
-    },
-    {
-        id: "5",
-        title: "Whitepaper on Blockchain Security",
-        category: "technical",
-        wordCount: 5000,
-        deadline: "2026-01-25T17:00:00Z",
-        status: "completed",
-        priority: "high",
-        reward: "$200.00",
-    }
-];
-
 export default function AssignmentsPage() {
+    const [assignments, setAssignments] = useState([]);
     const [statusFilter, setStatusFilter] = useState("all");
     const [searchQuery, setSearchQuery] = useState("");
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
+    const [user, setUser] = useState(null);
 
-    const filteredAssignments = mockAssignments.filter((item) => {
-        const matchesStatus = statusFilter === "all" || item.status === statusFilter;
+    const fetchUserAndAssignments = useCallback(async () => {
+        setLoading(true);
+        try {
+            // Get current user
+            const userRes = await fetch('/api/me');
+            const userData = await userRes.json();
+
+            if (userData.id) {
+                setUser(userData);
+                // Get assignments for this writer
+                const assignmentsRes = await fetch(`/api/assignments/writer?writerId=${userData.id}`);
+                const assignmentsData = await assignmentsRes.json();
+
+                if (assignmentsData.success) {
+                    setAssignments(assignmentsData.assignments);
+                } else {
+                    setError(assignmentsData.error || 'Failed to fetch assignments');
+                }
+            } else {
+                setError('User not found. Please log in.');
+            }
+        } catch (err) {
+            setError('Error connecting to API');
+            console.error(err);
+        } finally {
+            setLoading(false);
+        }
+    }, []);
+
+    useEffect(() => {
+        fetchUserAndAssignments();
+    }, [fetchUserAndAssignments]);
+
+    const filteredAssignments = assignments.filter((item) => {
+        const matchesStatus = statusFilter === "all" || item.status.toLowerCase() === statusFilter.toLowerCase();
         const matchesSearch = item.title.toLowerCase().includes(searchQuery.toLowerCase());
         return matchesStatus && matchesSearch;
     });
@@ -137,11 +113,13 @@ export default function AssignmentsPage() {
 
                 <div className={styles.sidebarFooter}>
                     <div className={styles.userInfo}>
-                        <div className={styles.userAvatar}>SJ</div>
+                        <div className={styles.userAvatar}>
+                            {user?.fullName ? user.fullName.split(" ").map(n => n[0]).join("") : 'U'}
+                        </div>
                         <div className={styles.userDetails}>
-                            <span className={styles.userName}>{mockWriter.name}</span>
-                            <span className={`${styles.userStatus} ${styles[mockWriter.status]}`}>
-                                {mockWriter.status}
+                            <span className={styles.userName}>{user?.fullName || 'User'}</span>
+                            <span className={`${styles.userStatus} ${styles[(user?.profile?.status || 'ONBOARDING').toLowerCase()]}`}>
+                                {user?.profile?.status || 'ONBOARDING'}
                             </span>
                         </div>
                     </div>
@@ -160,6 +138,7 @@ export default function AssignmentsPage() {
                 <div className={styles.section}>
                     <div className={styles.sectionHeader}>
                         <div className={styles.headerActions} style={{ width: '100%', gap: '16px' }}>
+                            <button onClick={fetchUserAndAssignments} className="btn btn-neutral btn-sm">Refresh</button>
                             <div style={{ position: 'relative', flex: 1 }}>
                                 <input
                                     type="text"
@@ -192,57 +171,69 @@ export default function AssignmentsPage() {
                         </div>
                     </div>
 
-                    <div className={styles.assignmentsList}>
-                        {filteredAssignments.map((assignment) => {
-                            const deadline = formatDeadline(assignment.deadline);
-                            return (
-                                <div key={assignment.id} className={styles.assignmentCard}>
-                                    <div className={styles.assignmentHeader}>
-                                        <span className={`badge badge-${assignment.category === "academic" ? "primary" : "secondary"}`}>
-                                            {assignment.category}
-                                        </span>
-                                        <span className={`badge badge-${assignment.priority === "urgent" ? "danger" : assignment.priority === "high" ? "warning" : "neutral"}`}>
-                                            {assignment.priority}
-                                        </span>
-                                        <span style={{ marginLeft: 'auto', fontWeight: 600, color: 'var(--primary-700)' }}>
-                                            {assignment.reward}
-                                        </span>
-                                    </div>
-                                    <h3 className={styles.assignmentTitle}>{assignment.title}</h3>
-                                    <div className={styles.assignmentMeta}>
-                                        <span>
-                                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                                <path d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z" />
-                                            </svg>
-                                            {assignment.wordCount.toLocaleString()} words
-                                        </span>
-                                        <span className={deadline.urgent ? styles.urgent : ""}>
-                                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                                <circle cx="12" cy="12" r="10"></circle>
-                                                <polyline points="12 6 12 12 16 14"></polyline>
-                                            </svg>
-                                            {deadline.text}
-                                        </span>
-                                    </div>
-                                    <div className={styles.assignmentFooter}>
-                                        <span className={`${styles.status} ${styles[getStatusClass(assignment.status)]}`}>
-                                            {assignment.status.replace("_", " ")}
-                                        </span>
-                                        {assignment.status !== "submitted" && assignment.status !== "completed" && (
-                                            <Link href={`/writer/assignments/${assignment.id}/submit`} className="btn btn-primary btn-sm">
-                                                {assignment.status === "assigned" ? "Start Working" : "Submit Work"}
-                                            </Link>
-                                        )}
-                                        {assignment.status === "completed" && (
-                                            <span style={{ fontSize: '12px', color: 'var(--success-600)', fontWeight: 500 }}>
-                                                Payment Released
+                    {loading ? (
+                        <div style={{ textAlign: 'center', padding: '60px' }}>
+                            <div className="spinner"></div>
+                            <p>Loading assignments...</p>
+                        </div>
+                    ) : error ? (
+                        <div style={{ textAlign: 'center', padding: '60px' }}>
+                            <p style={{ color: 'red' }}>{error}</p>
+                            <button onClick={fetchUserAndAssignments} className="btn btn-primary btn-sm">Retry</button>
+                        </div>
+                    ) : (
+                        <div className={styles.assignmentsList}>
+                            {filteredAssignments.map((assignment) => {
+                                const deadline = formatDeadline(assignment.deadline);
+                                return (
+                                    <div key={assignment.id} className={styles.assignmentCard}>
+                                        <div className={styles.assignmentHeader}>
+                                            <span className={`badge badge-${assignment.category === "academic" ? "primary" : "secondary"}`}>
+                                                {assignment.category}
                                             </span>
-                                        )}
+                                            <span className={`badge badge-${assignment.priority === "urgent" ? "danger" : assignment.priority === "high" ? "warning" : "neutral"}`}>
+                                                {assignment.priority}
+                                            </span>
+                                            <span style={{ marginLeft: 'auto', fontWeight: 600, color: 'var(--primary-700)' }}>
+                                                ${assignment.reward || '0.00'}
+                                            </span>
+                                        </div>
+                                        <h3 className={styles.assignmentTitle}>{assignment.title}</h3>
+                                        <div className={styles.assignmentMeta}>
+                                            <span>
+                                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                                    <path d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z" />
+                                                </svg>
+                                                {(assignment.wordCount || 0).toLocaleString()} words
+                                            </span>
+                                            <span className={deadline.urgent ? styles.urgent : ""}>
+                                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                                    <circle cx="12" cy="12" r="10"></circle>
+                                                    <polyline points="12 6 12 12 16 14"></polyline>
+                                                </svg>
+                                                {deadline.text}
+                                            </span>
+                                        </div>
+                                        <div className={styles.assignmentFooter}>
+                                            <span className={`${styles.status} ${styles[getStatusClass(assignment.status.toLowerCase())]}`}>
+                                                {assignment.status.replace("_", " ")}
+                                            </span>
+                                            {assignment.status.toLowerCase() !== "submitted" && assignment.status.toLowerCase() !== "completed" && (
+                                                <Link href={`/writer/assignments/${assignment.id}/submit`} className="btn btn-primary btn-sm">
+                                                    {assignment.status.toLowerCase() === "assigned" ? "Start Working" : "Submit Work"}
+                                                </Link>
+                                            )}
+                                            {assignment.status.toLowerCase() === "completed" && (
+                                                <span style={{ fontSize: '12px', color: 'var(--success-600)', fontWeight: 500 }}>
+                                                    Payment Released
+                                                </span>
+                                            )}
+                                        </div>
                                     </div>
-                                </div>
-                            );
-                        })}
-                    </div>
+                                );
+                            })}
+                        </div>
+                    )}
 
                     {filteredAssignments.length === 0 && (
                         <div style={{ textAlign: 'center', padding: '60px', background: 'var(--bg-primary)', borderRadius: 'var(--radius-xl)', border: '1px solid var(--border-light)' }}>

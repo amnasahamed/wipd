@@ -1,66 +1,65 @@
 "use client";
 
-import { useState } from "react";
-import Link from "next/link";
+import { useEffect, useCallback } from "react";
 import styles from "./dashboard.module.css";
 
-// Mock data
-const mockWriter = {
-    name: "Sarah Johnson",
-    status: "probation",
-    email: "sarah.j@example.com",
-};
-
-const mockAssignments = [
-    {
-        id: "1",
-        title: "Research Paper on Machine Learning Algorithms",
-        category: "academic",
-        wordCount: 3000,
-        deadline: "2026-02-10T18:00:00Z",
-        status: "assigned",
-        priority: "high",
-        createdAt: "2026-02-02T10:00:00Z",
-    },
-    {
-        id: "2",
-        title: "API Documentation for Payment Gateway",
-        category: "technical",
-        wordCount: 2000,
-        deadline: "2026-02-15T12:00:00Z",
-        status: "in_progress",
-        priority: "normal",
-        createdAt: "2026-02-01T14:30:00Z",
-    },
-    {
-        id: "3",
-        title: "Case Study on Fintech Adoption",
-        category: "academic",
-        wordCount: 4000,
-        deadline: "2026-02-08T09:00:00Z",
-        status: "submitted",
-        priority: "urgent",
-        createdAt: "2026-01-28T08:00:00Z",
-    },
-];
-
-const mockStats = [
-    { label: "Active Assignments", value: 2, icon: "clipboard" },
-    { label: "Completed", value: 12, icon: "check" },
-    { label: "Success Rate", value: "98%", icon: "star" },
-    { label: "Avg. Rating", value: "4.8", icon: "heart" },
-];
-
-const mockNotifications = [
-    { id: 1, title: "New Assignment", message: "Research Paper on ML Algorithms has been assigned.", time: "2h ago", unread: true },
-    { id: 2, title: "Feedback Received", message: "New insights available for Payment API Docs.", time: "5h ago", unread: true },
-    { id: 3, title: "Account Update", message: "Your status has been updated to Probation.", time: "1d ago", unread: false },
-];
-
 export default function WriterDashboard() {
-    const [assignments] = useState(mockAssignments);
+    const [assignments, setAssignments] = useState([]);
+    const [user, setUser] = useState(null);
+    const [stats, setStats] = useState([
+        { label: "Active Assignments", value: 0, icon: "clipboard" },
+        { label: "Completed", value: 0, icon: "check" },
+        { label: "Success Rate", value: "0%", icon: "star" },
+        { label: "Avg. Grammarly", value: "0", icon: "heart" },
+    ]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
     const [showNotifications, setShowNotifications] = useState(false);
-    const [notifications, setNotifications] = useState(mockNotifications);
+    const [notifications, setNotifications] = useState([
+        { id: 1, title: "Welcome", message: "Welcome to the new WriterHub dashboard!", time: "Recently", unread: true },
+    ]);
+
+    const fetchData = useCallback(async () => {
+        setLoading(true);
+        try {
+            // Get current user
+            const userRes = await fetch('/api/me');
+            const userData = await userRes.json();
+
+            if (userData.id) {
+                setUser(userData);
+                // Get assignments
+                const assignmentsRes = await fetch(`/api/assignments/writer?writerId=${userData.id}`);
+                const assignmentsData = await assignmentsRes.json();
+
+                if (assignmentsData.success) {
+                    const allAssignments = assignmentsData.assignments;
+                    setAssignments(allAssignments.slice(0, 5)); // Recent 5
+
+                    // Calculate stats
+                    const activeCount = allAssignments.filter(a => ['ASSIGNED', 'IN_PROGRESS'].includes(a.status)).length;
+                    const completedCount = allAssignments.filter(a => a.status === 'COMPLETED').length;
+                    const grammarScore = userData.profile?.grammarScore || 0;
+
+                    setStats([
+                        { label: "Active Assignments", value: activeCount, icon: "clipboard" },
+                        { label: "Completed", value: completedCount, icon: "check" },
+                        { label: "Success Rate", value: "100%", icon: "star" }, // Mock for now
+                        { label: "Grammar Score", value: `${grammarScore}%`, icon: "heart" },
+                    ]);
+                }
+            }
+        } catch (err) {
+            console.error('Error fetching dashboard data:', err);
+            setError('Failed to load dashboard data');
+        } finally {
+            setLoading(false);
+        }
+    }, []);
+
+    useEffect(() => {
+        fetchData();
+    }, [fetchData]);
 
     const toggleNotifications = () => setShowNotifications(!showNotifications);
     const unreadCount = notifications.filter(n => n.unread).length;
@@ -127,11 +126,13 @@ export default function WriterDashboard() {
 
                 <div className={styles.sidebarFooter}>
                     <div className={styles.userInfo}>
-                        <div className={styles.userAvatar}>SJ</div>
+                        <div className={styles.userAvatar}>
+                            {user?.fullName ? user.fullName.split(" ").map(n => n[0]).join("") : 'U'}
+                        </div>
                         <div className={styles.userDetails}>
-                            <span className={styles.userName}>{mockWriter.name}</span>
-                            <span className={`${styles.userStatus} ${styles[mockWriter.status]}`}>
-                                {mockWriter.status}
+                            <span className={styles.userName}>{user?.fullName || 'User'}</span>
+                            <span className={`${styles.userStatus} ${styles[(user?.profile?.status || 'ONBOARDING').toLowerCase()]}`}>
+                                {user?.profile?.status || 'ONBOARDING'}
                             </span>
                         </div>
                     </div>
@@ -143,7 +144,7 @@ export default function WriterDashboard() {
                 {/* Welcome Header */}
                 <div className={styles.welcomeHeader}>
                     <div>
-                        <h1>Welcome back, {mockWriter.name.split(" ")[0]}! 👋</h1>
+                        <h1>Welcome back{user?.fullName ? `, ${user.fullName.split(" ")[0]}` : ''}! 👋</h1>
                         <p>Here's an overview of your assignments and progress.</p>
                     </div>
                     <div className={styles.headerActions}>
@@ -184,7 +185,7 @@ export default function WriterDashboard() {
 
                 {/* Stats Grid */}
                 <div className={styles.statsGrid}>
-                    {mockStats.map((stat, idx) => (
+                    {stats.map((stat, idx) => (
                         <div key={idx} className={styles.statCard}>
                             <div className={styles.statIcon}>
                                 {stat.icon === "clipboard" && (
@@ -226,7 +227,16 @@ export default function WriterDashboard() {
                     </div>
 
                     <div className={styles.assignmentsList}>
-                        {assignments.map((assignment) => {
+                        {loading ? (
+                            <div style={{ textAlign: 'center', padding: '40px' }}>
+                                <div className="spinner"></div>
+                                <p>Loading assignments...</p>
+                            </div>
+                        ) : assignments.length === 0 ? (
+                            <div style={{ textAlign: 'center', padding: '40px' }}>
+                                <p>No active assignments.</p>
+                            </div>
+                        ) : assignments.map((assignment) => {
                             const deadline = formatDeadline(assignment.deadline);
                             return (
                                 <div key={assignment.id} className={styles.assignmentCard}>
@@ -244,7 +254,7 @@ export default function WriterDashboard() {
                                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                                                 <path d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z" />
                                             </svg>
-                                            {assignment.wordCount.toLocaleString()} words
+                                            {(assignment.wordCount || 0).toLocaleString()} words
                                         </span>
                                         <span className={deadline.urgent ? styles.urgent : ""}>
                                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -255,12 +265,12 @@ export default function WriterDashboard() {
                                         </span>
                                     </div>
                                     <div className={styles.assignmentFooter}>
-                                        <span className={`${styles.status} ${styles[getStatusClass(assignment.status)]}`}>
+                                        <span className={`${styles.status} ${styles[getStatusClass(assignment.status.toLowerCase())]}`}>
                                             {assignment.status.replace("_", " ")}
                                         </span>
-                                        {assignment.status !== "submitted" && (
+                                        {assignment.status.toLowerCase() !== "submitted" && assignment.status.toLowerCase() !== "completed" && (
                                             <Link href={`/writer/assignments/${assignment.id}/submit`} className="btn btn-primary btn-sm">
-                                                {assignment.status === "assigned" ? "Start Working" : "Submit Work"}
+                                                {assignment.status.toLowerCase() === "assigned" ? "Start Working" : "Submit Work"}
                                             </Link>
                                         )}
                                     </div>
