@@ -59,8 +59,26 @@ const mockSubmissions = [
 ];
 
 export default function SubmissionsPage() {
-    const [submissions, setSubmissions] = useState(mockSubmissions);
+    const [submissions, setSubmissions] = useState([]);
     const [searchQuery, setSearchQuery] = useState("");
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        const fetchSubmissions = async () => {
+            try {
+                const res = await fetch('/api/submissions');
+                const data = await res.json();
+                if (data.success) {
+                    setSubmissions(data.submissions);
+                }
+            } catch (error) {
+                console.error('Error fetching submissions:', error);
+            } finally {
+                setLoading(false);
+            }
+        };
+        fetchSubmissions();
+    }, []);
 
     const filteredSubmissions = submissions.filter((item) => {
         return item.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -81,6 +99,10 @@ export default function SubmissionsPage() {
             minute: "2-digit"
         });
     };
+
+    if (loading) {
+        return <div className={styles.adminLayout}><main className={styles.adminMain}>Loading...</main></div>;
+    }
 
     return (
         <div className={styles.adminLayout}>

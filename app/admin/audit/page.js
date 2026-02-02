@@ -64,8 +64,26 @@ const mockAuditLogs = [
 ];
 
 export default function AuditLogsPage() {
-    const [logs] = useState(mockAuditLogs);
+    const [logs, setLogs] = useState([]);
     const [actionFilter, setActionFilter] = useState("all");
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        const fetchLogs = async () => {
+            try {
+                const res = await fetch('/api/audit');
+                const data = await res.json();
+                if (data.success) {
+                    setLogs(data.logs);
+                }
+            } catch (error) {
+                console.error('Error fetching audit logs:', error);
+            } finally {
+                setLoading(false);
+            }
+        };
+        fetchLogs();
+    }, []);
 
     const formatTimestamp = (dateString) => {
         return new Date(dateString).toLocaleString("en-US", {
@@ -77,6 +95,7 @@ export default function AuditLogsPage() {
     };
 
     const getActionBadge = (action) => {
+        if (!action) return "neutral";
         if (action.includes("approved") || action.includes("created")) return "success";
         if (action.includes("rejected")) return "danger";
         if (action.includes("reviewed") || action.includes("updated")) return "warning";
@@ -84,6 +103,7 @@ export default function AuditLogsPage() {
     };
 
     const getActionLabel = (action) => {
+        if (!action) return "Unknown";
         return action.split(".").map((word) =>
             word.charAt(0).toUpperCase() + word.slice(1)
         ).join(" ");
@@ -93,6 +113,10 @@ export default function AuditLogsPage() {
         if (actionFilter === "all") return true;
         return log.action.startsWith(actionFilter);
     });
+
+    if (loading) {
+        return <div className={styles.adminLayout}><main className={styles.adminMain}>Loading...</main></div>;
+    }
 
     return (
         <div className={styles.adminLayout}>
@@ -195,20 +219,20 @@ export default function AuditLogsPage() {
                                     <td>
                                         <div className={auditStyles.actorCell}>
                                             <div className={auditStyles.actorAvatar}>
-                                                {log.actor.name.split(" ").map(n => n[0]).join("")}
+                                                {(log.actor?.name || "System").split(" ").map(n => n[0]).join("")}
                                             </div>
                                             <div className={auditStyles.actorInfo}>
-                                                <div className={auditStyles.actorName}>{log.actor.name}</div>
-                                                <div className={auditStyles.actorIp}>{log.ip}</div>
+                                                <div className={auditStyles.actorName}>{log.actor?.name || log.user || "System"}</div>
+                                                <div className={auditStyles.actorIp}>{log.ip || "127.0.0.1"}</div>
                                             </div>
                                         </div>
                                     </td>
                                     <td>
-                                        <span className={auditStyles.targetType}>{log.target.type}</span>
-                                        <div className={auditStyles.targetName}>{log.target.name}</div>
+                                        <span className={auditStyles.targetType}>{log.entity?.split(" ")[0]}</span>
+                                        <div className={auditStyles.targetName}>{log.entity}</div>
                                     </td>
                                     <td className={auditStyles.detailsCell}>
-                                        {log.details}
+                                        {typeof log.details === 'object' ? JSON.stringify(log.details) : log.details}
                                     </td>
                                 </tr>
                             ))}
