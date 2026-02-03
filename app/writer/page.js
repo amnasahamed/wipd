@@ -27,10 +27,18 @@ export default function WriterDashboard() {
             const userRes = await fetch('/api/me');
             const userData = await userRes.json();
 
-            if (userData.id) {
-                setUser(userData);
-                // Get assignments
-                const assignmentsRes = await fetch(`/api/assignments/writer?writerId=${userData.id}`);
+            if (userData.authenticated && userData.user) {
+                const currentUser = userData.user;
+                setUser({
+                    id: currentUser.id,
+                    email: currentUser.email,
+                    role: currentUser.role,
+                    fullName: currentUser.profile?.fullName || 'Writer',
+                    profile: currentUser.profile
+                });
+
+                // Get assignments using user ID
+                const assignmentsRes = await fetch(`/api/assignments/writer?writerId=${currentUser.id}`);
                 const assignmentsData = await assignmentsRes.json();
 
                 if (assignmentsData.success) {
@@ -38,17 +46,20 @@ export default function WriterDashboard() {
                     setAssignments(allAssignments.slice(0, 5)); // Recent 5
 
                     // Calculate stats
-                    const activeCount = allAssignments.filter(a => ['ASSIGNED', 'IN_PROGRESS'].includes(a.status)).length;
+                    const activeCount = allAssignments.filter(a => ['PENDING', 'IN_PROGRESS', 'ASSIGNED'].includes(a.status)).length;
                     const completedCount = allAssignments.filter(a => a.status === 'COMPLETED').length;
-                    const grammarScore = userData.profile?.grammarScore || 0;
+                    const grammarScore = currentUser.profile?.grammarScore || 0;
 
                     setStats([
                         { label: "Active Assignments", value: activeCount, icon: "clipboard" },
                         { label: "Completed", value: completedCount, icon: "check" },
-                        { label: "Success Rate", value: "100%", icon: "star" }, // Mock for now
+                        { label: "Success Rate", value: completedCount > 0 ? "100%" : "N/A", icon: "star" },
                         { label: "Grammar Score", value: `${grammarScore}%`, icon: "heart" },
                     ]);
                 }
+            } else {
+                // Not authenticated, redirect to login
+                window.location.href = '/login';
             }
         } catch (err) {
             console.error('Error fetching dashboard data:', err);

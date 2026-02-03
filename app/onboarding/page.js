@@ -395,11 +395,24 @@ export default function OnboardingPage() {
                     <h1>Application Submitted!</h1>
                     <p>
                         Your onboarding application has been submitted successfully.
-                        Our team will review your profile and samples. You'll receive an email notification once a decision is made.
+                        Our team will review your profile and samples. You'll receive an email notification once approved.
                     </p>
-                    <Link href="/" className="btn btn-primary btn-lg">
-                        Return to Home
-                    </Link>
+
+                    <div className={styles.credentialsBox}>
+                        <h3>Your Login Credentials</h3>
+                        <p><strong>Email:</strong> {formData.email}</p>
+                        <p><strong>Password:</strong> The password you created during signup</p>
+                        <small>Save these for when your account is approved.</small>
+                    </div>
+
+                    <div className={styles.successActions}>
+                        <Link href="/login" className="btn btn-primary btn-lg">
+                            Go to Login
+                        </Link>
+                        <Link href="/" className="btn btn-secondary">
+                            Return to Home
+                        </Link>
+                    </div>
                 </div>
             );
         }
