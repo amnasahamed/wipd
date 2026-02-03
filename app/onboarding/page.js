@@ -298,12 +298,36 @@ export default function OnboardingPage() {
     // Submit form
     const handleSubmit = async () => {
         setIsSubmitting(true);
+        setErrors({});
 
         try {
-            // 1. Submit Assessment Results (Module 04)
+            // 1. Create User & Profile
+            const userRes = await fetch("/api/onboarding/start", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    email: formData.email,
+                    name: formData.name,
+                    phone: formData.phone,
+                    education: formData.education,
+                    experience: formData.experience,
+                    timezone: formData.timezone,
+                    workTypes: formData.workTypes,
+                    role: "WRITER"
+                })
+            });
+
+            const userData = await userRes.json();
+            if (!userData.success) throw new Error(userData.error || "Failed to create account");
+
+            const userId = userData.user.id; // Get real ID from DB
+
+            // 2. Submit Assessment Results (Module 04)
             await fetch("/api/tests/submit", {
                 method: "POST",
+                headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
+                    userId, // Pass the real user ID
                     testType: "grammar",
                     responses: formData.grammarAnswers
                 })
@@ -311,18 +335,20 @@ export default function OnboardingPage() {
 
             await fetch("/api/tests/submit", {
                 method: "POST",
+                headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
+                    userId, // Pass the real user ID
                     testType: "policy",
                     responses: formData.policyAnswers
                 })
             });
 
-            // 2. Upload Samples & Create Baselines (Module 05)
+            // 3. Upload Samples & Create Baselines (Module 05)
             const allSamples = [...formData.academicSamples, ...formData.technicalSamples];
             for (const file of allSamples) {
                 const sampleData = new FormData();
                 sampleData.append("file", file);
-                sampleData.append("writerId", formData.email);
+                sampleData.append("writerId", userId); // Pass the real user ID
 
                 await fetch("/api/baseline/upload", {
                     method: "POST",
@@ -333,7 +359,7 @@ export default function OnboardingPage() {
             setIsCompleted(true);
         } catch (error) {
             console.error("Submission failed", error);
-            setErrors({ submit: "There was an error submitting your application. Please try again." });
+            setErrors({ submit: error.message || "There was an error submitting your application. Please try again." });
         } finally {
             setIsSubmitting(false);
         }

@@ -20,11 +20,17 @@ export async function POST(request) {
             user = await prisma.user.create({
                 data: {
                     email,
+                    fullName: body.name || '',
                     password: 'password123', // Mock password for now
                     role,
                     profile: {
                         create: {
-                            status: 'ONBOARDING'
+                            status: 'ONBOARDING',
+                            education: body.education,
+                            experience: body.experience,
+                            bio: body.workTypes ? body.workTypes.join(', ') : '',
+                            phone: body.phone,
+                            timezone: body.timezone
                         }
                     }
                 },
@@ -40,7 +46,34 @@ export async function POST(request) {
                     entityType: 'USER',
                     entityId: user.id,
                     action: 'CREATE',
-                    details: JSON.stringify({ email, role })
+                    details: JSON.stringify({ email, role, profile: 'created' })
+                }
+            });
+        } else {
+            // Update existing user profile if needed (e.g. restarting onboarding)
+            await prisma.user.update({
+                where: { id: user.id },
+                data: {
+                    fullName: body.name,
+                    profile: {
+                        upsert: {
+                            create: {
+                                status: 'ONBOARDING',
+                                education: body.education,
+                                experience: body.experience,
+                                bio: body.workTypes ? body.workTypes.join(', ') : '',
+                                phone: body.phone,
+                                timezone: body.timezone
+                            },
+                            update: {
+                                education: body.education,
+                                experience: body.experience,
+                                bio: body.workTypes ? body.workTypes.join(', ') : '',
+                                phone: body.phone,
+                                timezone: body.timezone
+                            }
+                        }
+                    }
                 }
             });
         }
