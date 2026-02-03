@@ -23,7 +23,7 @@ export async function GET() {
             success: true,
             applications: applications.map(app => ({
                 id: app.id,
-                name: app.profile?.fullName || 'New Applicant',
+                fullName: app.profile?.fullName || 'New Applicant',
                 email: app.email,
                 appliedAt: app.createdAt,
                 status: app.profile?.status || 'pending',

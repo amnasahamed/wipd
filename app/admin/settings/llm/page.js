@@ -63,7 +63,7 @@ export default function LLMSettingsPage() {
                 <div>
                     <h1 className={styles.pageTitle}>LLM Configuration</h1>
                     <p className={styles.pageSubtitle}>
-                        Configure AI providers and system prompts for integrity analysis.
+                        Configure AI providers and system rules for integrity analysis.
                     </p>
                 </div>
                 <button
@@ -75,104 +75,115 @@ export default function LLMSettingsPage() {
                 </button>
             </div>
 
-            <div className={styles.dashboardCard}>
-                <div className={styles.cardHeader}>
-                    <h3>Provider Settings</h3>
-                </div>
-                <div style={{ padding: '24px', maxWidth: '600px' }}>
-                    <div className="form-group">
-                        <label className="form-label">Active Provider</label>
-                        <select
-                            name="llm_provider"
-                            value={settings.llm_provider}
-                            onChange={handleChange}
-                            className="form-select"
-                        >
-                            <option value="mock">Mock / Default</option>
-                            <option value="openai">OpenAI (GPT-4)</option>
-                            <option value="anthropic">Anthropic (Claude 3.5)</option>
-                            <option value="gemini">Google Gemini</option>
-                            <option value="groq">Groq (Llama 3)</option>
-                        </select>
+            <div className={styles.dashboardGrid}>
+                {/* Left Col: Settings */}
+                <div style={{ gridColumn: 'span 2' }}>
+                    {/* Active Provider Card */}
+                    <div className={styles.formCard} style={{ marginBottom: '24px' }}>
+                        <div className={styles.cardHeader}>
+                            <h3>Active Engine</h3>
+                        </div>
+                        <div className={styles.formSection}>
+                            <div className="form-group">
+                                <label className={styles.label}>Select Provider</label>
+                                <select
+                                    name="llm_provider"
+                                    value={settings.llm_provider}
+                                    onChange={handleChange}
+                                    className={styles.select}
+                                >
+                                    <option value="mock">✨ Mock Engine (Free / Test)</option>
+                                    <option value="openai">🧠 OpenAI (GPT-4)</option>
+                                    <option value="anthropic">🍄 Anthropic (Claude 3.5)</option>
+                                    <option value="gemini">🌟 Google Gemini (Pro)</option>
+                                    <option value="groq">⚡ Groq (Llama 3)</option>
+                                </select>
+                                <p style={{ fontSize: '12px', color: '#64748b', marginTop: '8px' }}>
+                                    This provider will be used for all new submission analyses.
+                                </p>
+                            </div>
+                        </div>
                     </div>
 
-                    {settings.llm_provider === 'openai' && (
-                        <div className="form-group" style={{ marginTop: '16px' }}>
-                            <label className="form-label">OpenAI API Key</label>
-                            <input
-                                type="password"
-                                name="openai_api_key"
-                                value={settings.openai_api_key}
-                                onChange={handleChange}
-                                className="form-input"
-                                placeholder="sk-..."
-                            />
+                    {/* API Credentials Vault */}
+                    <div className={styles.formCard} style={{ marginBottom: '24px' }}>
+                        <div className={styles.cardHeader}>
+                            <h3>Credentials Vault</h3>
                         </div>
-                    )}
-
-                    {settings.llm_provider === 'anthropic' && (
-                        <div className="form-group" style={{ marginTop: '16px' }}>
-                            <label className="form-label">Anthropic API Key</label>
-                            <input
-                                type="password"
-                                name="anthropic_api_key"
-                                value={settings.anthropic_api_key}
-                                onChange={handleChange}
-                                className="form-input"
-                                placeholder="sk-ant-..."
-                            />
+                        <div className={styles.formSection}>
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+                                <div className="form-group">
+                                    <label className={styles.label}>OpenAI API Key</label>
+                                    <input
+                                        type="password"
+                                        name="openai_api_key"
+                                        value={settings.openai_api_key}
+                                        onChange={handleChange}
+                                        className={styles.input}
+                                        placeholder="sk-..."
+                                    />
+                                </div>
+                                <div className="form-group">
+                                    <label className={styles.label}>Anthropic API Key</label>
+                                    <input
+                                        type="password"
+                                        name="anthropic_api_key"
+                                        value={settings.anthropic_api_key}
+                                        onChange={handleChange}
+                                        className={styles.input}
+                                        placeholder="sk-ant-..."
+                                    />
+                                </div>
+                                <div className="form-group">
+                                    <label className={styles.label}>Google Gemini Key</label>
+                                    <input
+                                        type="password"
+                                        name="gemini_api_key"
+                                        value={settings.gemini_api_key}
+                                        onChange={handleChange}
+                                        className={styles.input}
+                                        placeholder="AI..."
+                                    />
+                                </div>
+                                <div className="form-group">
+                                    <label className={styles.label}>Groq Key</label>
+                                    <input
+                                        type="password"
+                                        name="groq_api_key"
+                                        value={settings.groq_api_key}
+                                        onChange={handleChange}
+                                        className={styles.input}
+                                        placeholder="gsk_..."
+                                    />
+                                </div>
+                            </div>
                         </div>
-                    )}
-
-                    {settings.llm_provider === 'gemini' && (
-                        <div className="form-group" style={{ marginTop: '16px' }}>
-                            <label className="form-label">Gemini API Key</label>
-                            <input
-                                type="password"
-                                name="gemini_api_key"
-                                value={settings.gemini_api_key}
-                                onChange={handleChange}
-                                className="form-input"
-                                placeholder="AI..."
-                            />
-                        </div>
-                    )}
-
-                    {settings.llm_provider === 'groq' && (
-                        <div className="form-group" style={{ marginTop: '16px' }}>
-                            <label className="form-label">Groq API Key</label>
-                            <input
-                                type="password"
-                                name="groq_api_key"
-                                value={settings.groq_api_key}
-                                onChange={handleChange}
-                                className="form-input"
-                                placeholder="gsk_..."
-                            />
-                        </div>
-                    )}
+                    </div>
                 </div>
-            </div>
 
-            <div className={styles.dashboardCard} style={{ marginTop: '24px' }}>
-                <div className={styles.cardHeader}>
-                    <h3>Analysis Prompts</h3>
-                </div>
-                <div style={{ padding: '24px', maxWidth: '800px' }}>
-                    <div className="form-group">
-                        <label className="form-label">System Prompt</label>
-                        <p style={{ fontSize: '13px', color: '#64748b', marginBottom: '8px' }}>
-                            Define the instructions given to the LLM for analyzing submissions.
-                        </p>
-                        <textarea
-                            name="system_prompt"
-                            value={settings.system_prompt}
-                            onChange={handleChange}
-                            className="form-input"
-                            rows={8}
-                            placeholder="You are an expert writing analyst..."
-                            style={{ fontFamily: 'monospace', fontSize: '13px' }}
-                        />
+                {/* Right Col: System Prompt */}
+                <div>
+                    <div className={styles.formCard}>
+                        <div className={styles.cardHeader}>
+                            <h3>System Instructions</h3>
+                        </div>
+                        <div className={styles.formSection}>
+                            <div className="form-group">
+                                <label className={styles.label}>Prompt Definition</label>
+                                <textarea
+                                    name="system_prompt"
+                                    value={settings.system_prompt}
+                                    onChange={handleChange}
+                                    className={styles.textarea}
+                                    rows={15}
+                                    placeholder="You are an expert writing analyst..."
+                                    style={{ fontFamily: 'monospace', fontSize: '12px' }}
+                                />
+                                <p style={{ fontSize: '12px', color: '#64748b', marginTop: '8px' }}>
+                                    Instructions for the AI on how to detect stylometric anomalies.
+                                </p>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>

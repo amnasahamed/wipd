@@ -28,7 +28,7 @@ export async function GET() {
 
             return {
                 id: w.id,
-                name: w.profile?.fullName || 'Unknown Writer',
+                fullName: w.profile?.fullName || 'Unknown Writer',
                 email: w.email,
                 status: w.profile?.status?.toLowerCase() || 'probation', // Default to probation if missing
                 joinedAt: w.createdAt,

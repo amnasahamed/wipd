@@ -5,63 +5,7 @@ import Link from "next/link";
 import styles from "../admin.module.css";
 import auditStyles from "./audit.module.css";
 
-// Mock audit log data
-const mockAuditLogs = [
-    {
-        id: "1",
-        timestamp: "2026-02-02T19:00:00Z",
-        action: "application.approved",
-        actor: { name: "Admin User", role: "administrator" },
-        target: { type: "application", name: "Sarah Johnson" },
-        details: "Application approved. Writer moved to probation status.",
-        ip: "192.168.1.100",
-    },
-    {
-        id: "2",
-        timestamp: "2026-02-02T18:45:00Z",
-        action: "submission.reviewed",
-        actor: { name: "Admin User", role: "administrator" },
-        target: { type: "submission", name: "Research Paper - Michael Chen" },
-        details: "Submission marked as requiring revision. AI risk flagged.",
-        ip: "192.168.1.100",
-    },
-    {
-        id: "3",
-        timestamp: "2026-02-02T18:30:00Z",
-        action: "assignment.created",
-        actor: { name: "Admin User", role: "administrator" },
-        target: { type: "assignment", name: "Technical Documentation" },
-        details: "New assignment created and assigned to Sarah Johnson.",
-        ip: "192.168.1.100",
-    },
-    {
-        id: "4",
-        timestamp: "2026-02-02T18:00:00Z",
-        action: "settings.updated",
-        actor: { name: "Admin User", role: "administrator" },
-        target: { type: "risk_thresholds", name: "Risk Settings" },
-        details: "AI risk low threshold changed from 20% to 25%.",
-        ip: "192.168.1.100",
-    },
-    {
-        id: "5",
-        timestamp: "2026-02-02T17:30:00Z",
-        action: "submission.rejected",
-        actor: { name: "Admin User", role: "administrator" },
-        target: { type: "submission", name: "Case Study - Emily Rodriguez" },
-        details: "Submission rejected due to high AI assistance risk (78%).",
-        ip: "192.168.1.100",
-    },
-    {
-        id: "6",
-        timestamp: "2026-02-02T16:00:00Z",
-        action: "writer.status_changed",
-        actor: { name: "System", role: "system" },
-        target: { type: "writer", name: "David Kim" },
-        details: "Writer status changed from probation to active after 5 successful submissions.",
-        ip: "system",
-    },
-];
+
 
 export default function AuditLogsPage() {
     const [logs, setLogs] = useState([]);
