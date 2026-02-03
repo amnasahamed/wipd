@@ -5,10 +5,18 @@ import bcrypt from 'bcryptjs';
 export async function POST(request) {
     try {
         const body = await request.json();
-        const { email, role = 'WRITER' } = body;
+        const { email, password, role = 'WRITER' } = body;
 
         if (!email) {
             return NextResponse.json({ error: 'Email is required' }, { status: 400 });
+        }
+
+        if (!password) {
+            return NextResponse.json({ error: 'Password is required' }, { status: 400 });
+        }
+
+        if (password.length < 8) {
+            return NextResponse.json({ error: 'Password must be at least 8 characters' }, { status: 400 });
         }
 
         // Check if user exists
@@ -17,9 +25,8 @@ export async function POST(request) {
         });
 
         if (!user) {
-            // Hash the default password
-            // In a real flow, a temporary password or invite link should be used.
-            const hashedPassword = await bcrypt.hash('password123', 10);
+            // Hash the user-provided password
+            const hashedPassword = await bcrypt.hash(password, 10);
 
             // Create user and profile
             user = await prisma.user.create({

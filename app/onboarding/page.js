@@ -21,6 +21,8 @@ const initialFormData = {
     // Profile
     name: "",
     email: "",
+    password: "",
+    confirmPassword: "",
     phone: "",
     education: "",
     experience: "",
@@ -234,6 +236,11 @@ export default function OnboardingPage() {
                 else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
                     newErrors.email = "Invalid email format";
                 }
+                if (!formData.password) newErrors.password = "Password is required";
+                else if (formData.password.length < 8) newErrors.password = "Password must be at least 8 characters";
+                if (formData.password !== formData.confirmPassword) {
+                    newErrors.confirmPassword = "Passwords do not match";
+                }
                 if (!formData.education) newErrors.education = "Education level is required";
                 if (!formData.timezone) newErrors.timezone = "Timezone is required";
                 break;
@@ -307,6 +314,7 @@ export default function OnboardingPage() {
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
                     email: formData.email,
+                    password: formData.password,
                     name: formData.name,
                     phone: formData.phone,
                     education: formData.education,
@@ -628,6 +636,35 @@ function ProfileStep({ formData, onChange, errors }) {
                         className="form-input"
                         placeholder="+1 (555) 000-0000"
                     />
+                </div>
+            </div>
+
+            <div className={styles.formRow}>
+                <div className="form-group">
+                    <label className="form-label">Password *</label>
+                    <input
+                        type="password"
+                        name="password"
+                        value={formData.password}
+                        onChange={onChange}
+                        className={`form-input ${errors.password ? "error" : ""}`}
+                        placeholder="Enter a secure password"
+                    />
+                    {errors.password && <span className="form-error">{errors.password}</span>}
+                    <small className="form-hint">Minimum 8 characters</small>
+                </div>
+
+                <div className="form-group">
+                    <label className="form-label">Confirm Password *</label>
+                    <input
+                        type="password"
+                        name="confirmPassword"
+                        value={formData.confirmPassword}
+                        onChange={onChange}
+                        className={`form-input ${errors.confirmPassword ? "error" : ""}`}
+                        placeholder="Re-enter your password"
+                    />
+                    {errors.confirmPassword && <span className="form-error">{errors.confirmPassword}</span>}
                 </div>
             </div>
 
