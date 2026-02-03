@@ -11,7 +11,18 @@ export async function GET(request) {
         // Strict session check via cookie
         const { cookies } = await import("next/headers");
         const cookieStore = await cookies();
-        const userId = cookieStore.get('auth-token')?.value;
+        const authToken = cookieStore.get('auth-token')?.value;
+
+        let userId;
+        try {
+            if (authToken) {
+                const parsed = JSON.parse(authToken);
+                userId = parsed.id;
+            }
+        } catch (e) {
+            // Cookie might be corrupted or old format
+            userId = null;
+        }
 
         let user;
         if (userId) {
