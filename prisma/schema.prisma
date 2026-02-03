@@ -28,6 +28,11 @@ model Profile {
   user         User     @relation(fields: [userId], references: [id])
   fullName     String?
   workTypes    String?  // JSON stringified array
+  education    String?
+  experience   String?
+  bio          String?
+  phone        String?
+  timezone     String?
   grammarScore Int?
   policyScore  Int?
   status       String   @default("ONBOARDING") // ONBOARDING, ACTIVE, SUSPENDED

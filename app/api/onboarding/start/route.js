@@ -20,11 +20,11 @@ export async function POST(request) {
             user = await prisma.user.create({
                 data: {
                     email,
-                    fullName: body.name || '',
                     password: 'password123', // Mock password for now
                     role,
                     profile: {
                         create: {
+                            fullName: body.name || '',
                             status: 'ONBOARDING',
                             education: body.education,
                             experience: body.experience,
@@ -54,10 +54,11 @@ export async function POST(request) {
             await prisma.user.update({
                 where: { id: user.id },
                 data: {
-                    fullName: body.name,
+                    // Remove fullName from User update
                     profile: {
                         upsert: {
                             create: {
+                                fullName: body.name || '',
                                 status: 'ONBOARDING',
                                 education: body.education,
                                 experience: body.experience,
@@ -66,6 +67,7 @@ export async function POST(request) {
                                 timezone: body.timezone
                             },
                             update: {
+                                fullName: body.name || '',
                                 education: body.education,
                                 experience: body.experience,
                                 bio: body.workTypes ? body.workTypes.join(', ') : '',
