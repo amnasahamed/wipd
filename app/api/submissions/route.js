@@ -5,6 +5,7 @@ export async function GET(request) {
     try {
         const { searchParams } = new URL(request.url);
         const detailed = searchParams.get('detailed') === 'true';
+        const limit = searchParams.get('limit');
 
         const submissions = await prisma.submission.findMany({
             include: {

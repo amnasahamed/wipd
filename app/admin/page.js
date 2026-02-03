@@ -23,7 +23,7 @@ export default function AdminDashboard() {
             if (statsDataObj.success) {
                 const s = statsDataObj.stats;
                 setStats([
-                    { label: "Pending Applications", value: s.totalAssignments, change: "Live", positive: true, icon: "clock", color: "warning" },
+                    { label: "Pending Applications", value: s.pendingApplications || 0, change: "Live", positive: true, icon: "clock", color: "warning" },
                     { label: "Active Writers", value: s.totalWriters, change: "Live", positive: true, icon: "users", color: "success" },
                     { label: "Completion Rate", value: `${s.completionRate}%`, change: "Optimal", positive: true, icon: "check", color: "primary" },
                     { label: "Avg Integrity", value: `${s.avgIntegrity}%`, change: "Stable", positive: true, icon: "shield", color: "success" },

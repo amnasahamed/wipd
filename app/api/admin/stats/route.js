@@ -54,6 +54,8 @@ export async function GET() {
             senior: Math.round((levels.SENIOR / totalWriters) * 100),
             junior: Math.round((levels.JUNIOR / totalWriters) * 100),
         };
+        // 5. Count pending applications (writers in ONBOARDING status)
+        const pendingApplications = writers.filter(w => w.profile?.status === 'ONBOARDING').length;
 
         return NextResponse.json({
             success: true,
@@ -63,7 +65,8 @@ export async function GET() {
                 completionRate,
                 distribution,
                 totalAssignments: assignments.length,
-                totalWriters: writers.length
+                totalWriters: writers.filter(w => w.profile?.status === 'ACTIVE').length,
+                pendingApplications
             }
         });
     } catch (error) {

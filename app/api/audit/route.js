@@ -19,8 +19,12 @@ export async function GET(request) {
                 id: log.id,
                 timestamp: log.createdAt,
                 action: log.action,
-                entity: `${log.entityType} (${log.entityId})`,
+                entity: `${log.entityType} ${log.entityId.substring(0, 8)}...`,
+                actor: {
+                    name: log.user?.email?.split('@')[0] || 'System'
+                },
                 user: log.user?.email || 'System',
+                ip: '127.0.0.1',
                 details: log.details ? JSON.parse(log.details) : null
             }))
         });

@@ -30,7 +30,7 @@ export async function GET() {
                 id: w.id,
                 fullName: w.profile?.fullName || 'Unknown Writer',
                 email: w.email,
-                status: w.profile?.status?.toLowerCase() || 'probation', // Default to probation if missing
+                status: w.profile?.status || 'ONBOARDING', // Keep original case for badge display
                 joinedAt: w.createdAt,
                 stats: {
                     totalSubmissions: subs.length,

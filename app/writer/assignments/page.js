@@ -19,10 +19,15 @@ export default function AssignmentsPage() {
             const userRes = await fetch('/api/me');
             const userData = await userRes.json();
 
-            if (userData.id) {
-                setUser(userData);
+            if (userData.authenticated && userData.user) {
+                const currentUser = userData.user;
+                setUser({
+                    id: currentUser.id,
+                    fullName: currentUser.profile?.fullName || 'Writer',
+                    profile: currentUser.profile
+                });
                 // Get assignments for this writer
-                const assignmentsRes = await fetch(`/api/assignments/writer?writerId=${userData.id}`);
+                const assignmentsRes = await fetch(`/api/assignments/writer?writerId=${currentUser.id}`);
                 const assignmentsData = await assignmentsRes.json();
 
                 if (assignmentsData.success) {
@@ -31,7 +36,8 @@ export default function AssignmentsPage() {
                     setError(assignmentsData.error || 'Failed to fetch assignments');
                 }
             } else {
-                setError('User not found. Please log in.');
+                // Not authenticated, redirect to login
+                window.location.href = '/login';
             }
         } catch (err) {
             setError('Error connecting to API');
