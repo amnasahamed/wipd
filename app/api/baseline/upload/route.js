@@ -1,80 +1,142 @@
 import { NextResponse } from 'next/server';
-import { extractTextFromFile, createBaselineFromText } from '@/lib/baseline/processor';
+import { extractTextFromFile } from '@/lib/baseline/processor';
+import { calculateStyleMetrics } from '@/lib/intelligence/style-analyzer';
 import prisma from '@/lib/prisma';
+import { requireWriter } from '@/lib/auth/session';
 
 export async function POST(request) {
+    const { user: sessionUser, errorResponse } = await requireWriter();
+    if (errorResponse) return errorResponse;
+
     const formData = await request.formData();
     const file = formData.get('file');
-    const writerId = formData.get('writerId');
+    const writerId = sessionUser.id;
+    const writerIdFromBody = formData.get('writerId');
 
     if (!file) {
         return NextResponse.json({ error: "No file uploaded" }, { status: 400 });
     }
 
-    if (!writerId) {
-        return NextResponse.json({ error: "Writer ID is required" }, { status: 400 });
+    if (writerIdFromBody && writerIdFromBody !== writerId) {
+        return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
     try {
+        // 1) Resolve writer profile (writerId is the User.id)
+        const profile = await prisma.profile.findUnique({ where: { userId: writerId } });
+        if (!profile) return NextResponse.json({ error: "Writer profile not found" }, { status: 404 });
+
+        // 2) Extract text & compute per-sample style metrics
         const text = await extractTextFromFile(file);
+        const sampleMetrics = calculateStyleMetrics(text);
 
-        // 1. Create Baseline Logic (Same as before)
-        const baseline = createBaselineFromText(text);
-
-        // 2. Persist as a Submission for Admin Review
-        // We need an assignment to link to. For onboarding samples, we can:
-        // A) Create a "System" assignment for onboarding
-        // B) Create a placeholder assignment on the fly
-        // C) Allow null assignmentId if schema allowed (it doesn't seems to based on schema)
-
-        // Let's create specific "Onboarding Sample" assignment if it doesn't exist for this user?
-        // Or simpler: Just create a "Sample Submission" assignment for this user.
-
-        const assignment = await prisma.assignment.create({
-            data: {
-                title: `Onboarding Sample (${file.name})`,
-                description: "Sample document uploaded during onboarding for style baseline.",
-                status: 'COMPLETED',
-                writer: { connect: { userId: writerId } }, // Writer relation is on Profile.userId isn't direct?
-                // Wait, Schema says: writerId String, writer Profile @relation...
-                // So writerId matches Profile.id, NOT User.id?
-                // Let's check Schema: Profile.userId @unique. 
-                // The frontend likely passes User.id. We need Profile.id.
-                deadline: new Date()
-            }
-        });
-
-        // We need the Profile ID from the User ID
-        const userProfile = await prisma.profile.findUnique({
-            where: { userId: writerId }
-        });
-
-        if (!userProfile) {
-            return NextResponse.json({ error: "Writer profile not found" }, { status: 404 });
+        if (!sampleMetrics) {
+            return NextResponse.json(
+                { error: "Sample text is too short to establish a baseline" },
+                { status: 400 }
+            );
         }
 
-        // Fix assignment relation (it needs Profile ID, not User ID)
-        // Actually I already created it above with `connect: { userId: writerId }`? 
-        // No, `writer: Profile`. Profile has `userId` unique field. 
-        // formatting: `writer: { connect: { userId: writerId } }` works if connecting via unique field.
+        // 3) Aggregate into the writer baseline stored on Profile.baselineMetrics
+        const round = (value, decimals) => Number.parseFloat(value.toFixed(decimals));
+        let updatedBaseline = {
+            avgSentenceLength: sampleMetrics.avgSentenceLength,
+            vocabRichness: sampleMetrics.vocabRichness,
+            readabilityScore: sampleMetrics.readabilityScore,
+            sampleCount: 1,
+            updatedAt: new Date().toISOString(),
+        };
 
-        // Now create Submission
-        await prisma.submission.create({
-            data: {
-                assignmentId: assignment.id,
-                writerId: userProfile.id,
-                content: text,
-                fileUrl: "local-storage-placeholder", // In real app, upload to S3/Blob
-                status: 'APPROVED', // Auto-approve samples
-                integrityScore: 100, // Trusted baseline
+        if (profile.baselineMetrics) {
+            try {
+                const existing = JSON.parse(profile.baselineMetrics);
+                const parsedCount = Number(existing?.sampleCount);
+                const count = Number.isFinite(parsedCount) && parsedCount > 0 ? parsedCount : 1;
+                const nextCount = count + 1;
+
+                updatedBaseline = {
+                    avgSentenceLength: round(
+                        ((existing.avgSentenceLength ?? sampleMetrics.avgSentenceLength) * count +
+                            sampleMetrics.avgSentenceLength) /
+                            nextCount,
+                        2
+                    ),
+                    vocabRichness: round(
+                        ((existing.vocabRichness ?? sampleMetrics.vocabRichness) * count + sampleMetrics.vocabRichness) /
+                            nextCount,
+                        3
+                    ),
+                    readabilityScore: round(
+                        ((existing.readabilityScore ?? sampleMetrics.readabilityScore) * count +
+                            sampleMetrics.readabilityScore) /
+                            nextCount,
+                        2
+                    ),
+                    sampleCount: nextCount,
+                    updatedAt: new Date().toISOString(),
+                };
+            } catch {
+                // If baselineMetrics is corrupted, overwrite it with the current sample.
+                updatedBaseline = {
+                    avgSentenceLength: sampleMetrics.avgSentenceLength,
+                    vocabRichness: sampleMetrics.vocabRichness,
+                    readabilityScore: sampleMetrics.readabilityScore,
+                    sampleCount: 1,
+                    updatedAt: new Date().toISOString(),
+                };
             }
+        }
+
+        await prisma.$transaction(async (tx) => {
+            await tx.profile.update({
+                where: { id: profile.id },
+                data: { baselineMetrics: JSON.stringify(updatedBaseline) },
+            });
+
+            // 4) Persist the sample as an approved submission (auditability)
+            const assignment = await tx.assignment.create({
+                data: {
+                    title: `Onboarding Sample (${file.name})`,
+                    description: "Sample document uploaded during onboarding for style baseline.",
+                    status: "COMPLETED",
+                    writer: { connect: { id: profile.id } },
+                    deadline: new Date(),
+                },
+            });
+
+            await tx.submission.create({
+                data: {
+                    assignmentId: assignment.id,
+                    writerId: profile.id,
+                    content: text,
+                    fileUrl: "local-storage-placeholder",
+                    status: "APPROVED",
+                    integrityScore: 100,
+                    aiRiskScore: 0,
+                },
+            });
+
+            await tx.auditLog.create({
+                data: {
+                    userId: writerId,
+                    entityType: "PROFILE",
+                    entityId: profile.id,
+                    action: "BASELINE_UPDATE",
+                    details: JSON.stringify({
+                        fileName: file.name,
+                        sampleWordCount: sampleMetrics.wordCount,
+                        baseline: updatedBaseline,
+                    }),
+                },
+            });
         });
 
         return NextResponse.json({
             success: true,
             writerId,
-            baseline,
-            message: "Baseline created and sample saved successfully"
+            profileId: profile.id,
+            baseline: updatedBaseline,
+            message: "Baseline updated and sample saved successfully",
         });
     } catch (error) {
         console.error("Baseline upload error:", error);

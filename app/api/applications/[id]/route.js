@@ -1,10 +1,14 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
+import { requireAdmin } from '@/lib/auth/session';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET(request, { params }) {
     try {
+        const { errorResponse } = await requireAdmin();
+        if (errorResponse) return errorResponse;
+
         const { id } = await params;
 
         // Find user and profile by user ID

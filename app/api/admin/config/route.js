@@ -1,10 +1,14 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
+import { requireAdmin } from '@/lib/auth/session';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET() {
     try {
+        const { errorResponse } = await requireAdmin();
+        if (errorResponse) return errorResponse;
+
         const configs = await prisma.systemConfig.findMany();
 
         // Convert array to object for easier frontend consumption
@@ -27,6 +31,9 @@ export async function GET() {
 
 export async function POST(request) {
     try {
+        const { errorResponse } = await requireAdmin();
+        if (errorResponse) return errorResponse;
+
         const body = await request.json();
         const { settings } = body; // Expects object { key: value, ... }
 

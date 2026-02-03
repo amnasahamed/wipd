@@ -9,6 +9,7 @@ export default function IntegrityReportsPage() {
     const [submissions, setSubmissions] = useState([]);
     const [selectedRisk, setSelectedRisk] = useState("all");
     const [loading, setLoading] = useState(true);
+    const [actionLoadingId, setActionLoadingId] = useState(null);
 
     const fetchReports = useCallback(async () => {
         setLoading(true);
@@ -52,6 +53,29 @@ export default function IntegrityReportsPage() {
         if (score >= 60) return "warning";
         return "danger";
     };
+
+    const updateSubmissionStatus = useCallback(async (submissionId, status, notes) => {
+        setActionLoadingId(submissionId);
+        try {
+            const res = await fetch(`/api/submissions/${submissionId}`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ status, notes })
+            });
+
+            const data = await res.json();
+            if (!res.ok || !data.success) {
+                throw new Error(data.error || 'Failed to update submission');
+            }
+
+            await fetchReports();
+        } catch (error) {
+            console.error('Update status error:', error);
+            alert(error.message || 'Failed to update submission');
+        } finally {
+            setActionLoadingId(null);
+        }
+    }, [fetchReports]);
 
     return (
         <main className={styles.adminMain}>
@@ -195,9 +219,45 @@ export default function IntegrityReportsPage() {
                                     View Full Report
                                 </Link>
                                 <div className={reportStyles.actionGroup}>
-                                    <button className="btn btn-success btn-sm">Approve</button>
-                                    <button className="btn btn-warning btn-sm">Request Revision</button>
-                                    <button className="btn btn-danger btn-sm">Reject</button>
+                                    <button
+                                        className="btn btn-success btn-sm"
+                                        disabled={actionLoadingId === submission.id}
+                                        onClick={() => updateSubmissionStatus(submission.id, 'APPROVED')}
+                                    >
+                                        Approve
+                                    </button>
+                                    <button
+                                        className="btn btn-warning btn-sm"
+                                        disabled={actionLoadingId === submission.id}
+                                        onClick={() => {
+                                            const reason = prompt('Reason / notes for revision request:');
+                                            if (reason === null) return;
+                                            if (reason.trim().length === 0) {
+                                                alert('Notes are required to request a revision.');
+                                                return;
+                                            }
+                                            updateSubmissionStatus(submission.id, 'NEEDS_REWRITE', reason);
+                                        }}
+                                    >
+                                        Request Revision
+                                    </button>
+                                    <button
+                                        className="btn btn-danger btn-sm"
+                                        disabled={actionLoadingId === submission.id}
+                                        onClick={() => {
+                                            const confirmed = confirm('Reject this submission?');
+                                            if (!confirmed) return;
+                                            const reason = prompt('Reason / notes for rejection:');
+                                            if (reason === null) return;
+                                            if (reason.trim().length === 0) {
+                                                alert('Notes are required to reject a submission.');
+                                                return;
+                                            }
+                                            updateSubmissionStatus(submission.id, 'REJECTED', reason);
+                                        }}
+                                    >
+                                        Reject
+                                    </button>
                                 </div>
                             </div>
                         </div>

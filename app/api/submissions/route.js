@@ -1,13 +1,19 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
+import { requireAdmin } from '@/lib/auth/session';
 
 export async function GET(request) {
     try {
+        const { errorResponse } = await requireAdmin();
+        if (errorResponse) return errorResponse;
+
         const { searchParams } = new URL(request.url);
         const detailed = searchParams.get('detailed') === 'true';
         const limit = searchParams.get('limit');
+        const includeSamples = searchParams.get('includeSamples') === 'true';
 
         const submissions = await prisma.submission.findMany({
+            where: includeSamples ? {} : { NOT: { assignment: { title: { startsWith: 'Onboarding Sample' } } } },
             include: {
                 assignment: true,
                 writer: true,
@@ -28,7 +34,7 @@ export async function GET(request) {
                     title: s.assignment?.title || 'Untitled Assignment',
                     writer: s.writer?.fullName || 'Unknown Writer',
                     writerAvatar: (s.writer?.fullName || "U").charAt(0),
-                    category: (s.assignment?.title || '').toLowerCase().includes('technical') ? 'technical' : 'academic', // Inference
+                    category: s.assignment?.category || null,
                     submittedAt: s.createdAt,
                     integrityScore: s.integrityScore || 0,
                     aiScore: s.aiRiskScore || 0,

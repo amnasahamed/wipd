@@ -17,23 +17,31 @@ export default function SubmissionsPage() {
             const userRes = await fetch('/api/me');
             const userData = await userRes.json();
 
-            if (userData.id) {
-                setUser(userData);
-                const assignmentsRes = await fetch(`/api/assignments/writer?writerId=${userData.id}`);
+            if (userData.authenticated && userData.user) {
+                const currentUser = userData.user;
+                setUser({
+                    id: currentUser.id,
+                    fullName: currentUser.profile?.fullName || 'Writer',
+                    profile: currentUser.profile
+                });
+
+                const assignmentsRes = await fetch(`/api/assignments/writer?writerId=${currentUser.id}`);
                 const assignmentsData = await assignmentsRes.json();
 
                 if (assignmentsData.success) {
                     // Filter for assignments that have submissions
                     const subs = assignmentsData.assignments
-                        .filter(a => a.submission)
+                        .filter(a => a.latestSubmission)
                         .map(a => ({
-                            id: a.submission.id,
+                            id: a.latestSubmission.id,
+                            assignmentId: a.id,
                             title: a.title,
-                            submittedAt: a.submission.createdAt,
-                            integrityScore: a.submission.analysis?.integrityScore || 0,
-                            aiProbability: `${a.submission.analysis?.aiRiskScore || 0}%`,
+                            submittedAt: a.latestSubmission.createdAt,
+                            integrityScore: a.latestSubmission.integrityScore || 0,
+                            aiProbability: `${Math.round(a.latestSubmission.aiRiskScore || 0)}%`,
                             plagiarism: "0%", // Placeholder for now
-                            status: a.status.toLowerCase(),
+                            status: (a.latestSubmission.status || "PENDING_REVIEW").toLowerCase(),
+                            decisionNotes: a.latestSubmissionDecision?.notes || null,
                             wordCount: a.wordCount
                         }));
                     setSubmissions(subs);
@@ -41,7 +49,7 @@ export default function SubmissionsPage() {
                     setError(assignmentsData.error || 'Failed to fetch submissions');
                 }
             } else {
-                setError('User not found');
+                window.location.href = '/login';
             }
         } catch (err) {
             setError('Error connecting to API');
@@ -68,8 +76,9 @@ export default function SubmissionsPage() {
     const getStatusBadge = (status) => {
         switch (status) {
             case "approved": return "success";
-            case "under_review": return "primary";
-            case "flagged": return "danger";
+            case "pending_review": return "warning";
+            case "needs_rewrite": return "warning";
+            case "rejected": return "danger";
             default: return "neutral";
         }
     };
@@ -193,6 +202,11 @@ export default function SubmissionsPage() {
                                             <td style={{ padding: '20px 24px' }}>
                                                 <div style={{ fontWeight: 500, color: 'var(--text-primary)' }}>{item.title}</div>
                                                 <div style={{ fontSize: '12px', color: 'var(--text-tertiary)' }}>{(item.wordCount || 0).toLocaleString()} words</div>
+                                                {item.status === 'needs_rewrite' && item.decisionNotes && (
+                                                    <div style={{ fontSize: '12px', color: 'var(--warning-700)', marginTop: '6px' }}>
+                                                        Revision requested: {item.decisionNotes}
+                                                    </div>
+                                                )}
                                             </td>
                                             <td style={{ padding: '20px 24px', color: 'var(--text-secondary)', fontSize: '14px' }}>
                                                 {formatDate(item.submittedAt)}
@@ -223,9 +237,15 @@ export default function SubmissionsPage() {
                                                 </span>
                                             </td>
                                             <td style={{ padding: '20px 24px' }}>
-                                                <Link href={`/writer/insights?submissionId=${item.id}`} className="btn btn-ghost btn-sm" style={{ padding: '4px 8px' }}>
-                                                    View Report
-                                                </Link>
+                                                {item.status === 'needs_rewrite' ? (
+                                                    <Link href={`/writer/assignments/${item.assignmentId}/submit`} className="btn btn-primary btn-sm" style={{ padding: '4px 8px' }}>
+                                                        Submit Revision
+                                                    </Link>
+                                                ) : (
+                                                    <Link href={`/writer/insights?submissionId=${item.id}`} className="btn btn-ghost btn-sm" style={{ padding: '4px 8px' }}>
+                                                        View Report
+                                                    </Link>
+                                                )}
                                             </td>
                                         </tr>
                                     ))}
@@ -237,7 +257,7 @@ export default function SubmissionsPage() {
                     {filteredSubmissions.length === 0 && (
                         <div style={{ textAlign: 'center', padding: '60px', background: 'var(--bg-primary)', borderRadius: 'var(--radius-xl)', border: '1px solid var(--border-light)' }}>
                             <h3 style={{ fontSize: '18px', fontWeight: 600 }}>No submissions found</h3>
-                            <p style={{ color: 'var(--text-secondary)' }}>You haven't submitted any work matching your search.</p>
+                            <p style={{ color: 'var(--text-secondary)' }}>You haven&apos;t submitted any work matching your search.</p>
                         </div>
                     )}
                 </div>

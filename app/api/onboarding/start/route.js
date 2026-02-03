@@ -1,11 +1,12 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import bcrypt from 'bcryptjs';
+import { cookies } from 'next/headers';
 
 export async function POST(request) {
     try {
         const body = await request.json();
-        const { email, password, role = 'WRITER' } = body;
+        const { email, password } = body;
 
         if (!email) {
             return NextResponse.json({ error: 'Email is required' }, { status: 400 });
@@ -20,80 +21,59 @@ export async function POST(request) {
         }
 
         // Check if user exists
-        let user = await prisma.user.findUnique({
+        const existing = await prisma.user.findUnique({
             where: { email }
         });
 
-        if (!user) {
-            // Hash the user-provided password
-            const hashedPassword = await bcrypt.hash(password, 10);
-
-            // Create user and profile
-            user = await prisma.user.create({
-                data: {
-                    email,
-                    password: hashedPassword,
-                    role,
-                    profile: {
-                        create: {
-                            fullName: body.name || '',
-                            status: 'ONBOARDING',
-                            education: body.education,
-                            experience: body.experience,
-                            bio: body.bio || '',
-                            workTypes: body.workTypes ? JSON.stringify(body.workTypes) : '[]',
-                            phone: body.phone,
-                            timezone: body.timezone
-                        }
-                    }
-                },
-                include: {
-                    profile: true
-                }
-            });
-
-            // Log the action
-            await prisma.auditLog.create({
-                data: {
-                    userId: user.id,
-                    entityType: 'USER',
-                    entityId: user.id,
-                    action: 'CREATE',
-                    details: JSON.stringify({ email, role, profile: 'created' })
-                }
-            });
-        } else {
-            // Update existing user profile if needed (e.g. restarting onboarding)
-            await prisma.user.update({
-                where: { id: user.id },
-                data: {
-                    // Remove fullName from User update
-                    profile: {
-                        upsert: {
-                            create: {
-                                fullName: body.name || '',
-                                status: 'ONBOARDING',
-                                education: body.education,
-                                experience: body.experience,
-                                bio: body.bio || '',
-                                workTypes: body.workTypes ? JSON.stringify(body.workTypes) : '[]',
-                                phone: body.phone,
-                                timezone: body.timezone
-                            },
-                            update: {
-                                fullName: body.name || '',
-                                education: body.education,
-                                experience: body.experience,
-                                bio: body.bio || '',
-                                workTypes: body.workTypes ? JSON.stringify(body.workTypes) : '[]',
-                                phone: body.phone,
-                                timezone: body.timezone
-                            }
-                        }
-                    }
-                }
-            });
+        if (existing) {
+            return NextResponse.json({ error: 'Email is already registered. Please log in.' }, { status: 409 });
         }
+
+        // Hash the user-provided password
+        const hashedPassword = await bcrypt.hash(password, 10);
+
+        // Always create writers via onboarding (never allow role escalation from the client).
+        const user = await prisma.user.create({
+            data: {
+                email,
+                password: hashedPassword,
+                role: 'WRITER',
+                profile: {
+                    create: {
+                        fullName: body.name || '',
+                        status: 'ONBOARDING',
+                        education: body.education,
+                        experience: body.experience,
+                        bio: body.bio || '',
+                        workTypes: body.workTypes ? JSON.stringify(body.workTypes) : '[]',
+                        phone: body.phone,
+                        timezone: body.timezone
+                    }
+                }
+            },
+            include: { profile: true }
+        });
+
+        // Log the action
+        await prisma.auditLog.create({
+            data: {
+                userId: user.id,
+                entityType: 'USER',
+                entityId: user.id,
+                action: 'CREATE',
+                details: JSON.stringify({ email, role: user.role, profile: 'created' })
+            }
+        });
+
+        // Start a session immediately so subsequent onboarding steps are authenticated.
+        (await cookies()).set({
+            name: 'auth-token',
+            value: JSON.stringify({ id: user.id, role: user.role }),
+            httpOnly: true,
+            path: '/',
+            maxAge: 60 * 60 * 24 * 7, // 1 week
+            sameSite: 'strict'
+        });
 
         return NextResponse.json({
             success: true,

@@ -2,8 +2,23 @@ import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import bcrypt from 'bcryptjs';
 
-export async function POST() {
+export async function POST(request) {
     try {
+        // Safety guard: never allow seeding in production environments.
+        if (process.env.NODE_ENV === 'production') {
+            return NextResponse.json({ error: 'Not found' }, { status: 404 });
+        }
+
+        // Optional protection: set SEED_TOKEN to require a token for access.
+        const expectedToken = process.env.SEED_TOKEN;
+        if (expectedToken) {
+            const { searchParams } = new URL(request.url);
+            const providedToken = searchParams.get('token') || request.headers.get('x-seed-token');
+            if (providedToken !== expectedToken) {
+                return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+            }
+        }
+
         // Hash passwords
         const adminPassword = await bcrypt.hash('Amnas@1997', 10);
         const writerPassword = await bcrypt.hash('password123', 10);
@@ -55,4 +70,3 @@ export async function POST() {
         return NextResponse.json({ error: 'Internal Server Error', details: error.message }, { status: 500 });
     }
 }
-

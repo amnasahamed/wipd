@@ -1,11 +1,19 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
+import { requireAdmin } from '@/lib/auth/session';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET(request) {
     try {
+        const { errorResponse } = await requireAdmin();
+        if (errorResponse) return errorResponse;
+
+        const { searchParams } = new URL(request.url);
+        const includeSamples = searchParams.get('includeSamples') === 'true';
+
         const assignments = await prisma.assignment.findMany({
+            where: includeSamples ? {} : { NOT: { title: { startsWith: 'Onboarding Sample' } } },
             include: {
                 writer: true,
                 submissions: {
@@ -24,6 +32,10 @@ export async function GET(request) {
                 writerName: a.writer?.fullName || 'Unknown Writer',
                 deadline: a.deadline,
                 status: a.status,
+                category: a.category,
+                wordCount: a.wordCount,
+                citationStyle: a.citationStyle,
+                priority: a.priority,
                 lastSubmission: a.submissions[0] || null
             }))
         });
@@ -35,6 +47,9 @@ export async function GET(request) {
 
 export async function POST(request) {
     try {
+        const { user: sessionUser, errorResponse } = await requireAdmin();
+        if (errorResponse) return errorResponse;
+
         const body = await request.json();
         const { writerId, title, brief, deadline, category, wordCount, citationStyle, priority } = body;
 
@@ -52,12 +67,21 @@ export async function POST(request) {
             return NextResponse.json({ error: 'Writer not found' }, { status: 404 });
         }
 
+        const parsedWordCount = wordCount ? Number.parseInt(wordCount, 10) : null;
+        if (wordCount && (!Number.isFinite(parsedWordCount) || parsedWordCount <= 0)) {
+            return NextResponse.json({ error: 'Invalid wordCount' }, { status: 400 });
+        }
+
         // Create assignment linked to the writer's Profile
         const assignment = await prisma.assignment.create({
             data: {
                 writerId: user.profile.id,
                 title,
                 description: brief || '',
+                category: category || null,
+                wordCount: parsedWordCount,
+                citationStyle: citationStyle || null,
+                priority: priority || 'normal',
                 deadline: new Date(deadline),
                 status: 'PENDING'
             }
@@ -66,7 +90,7 @@ export async function POST(request) {
         // Log the action
         await prisma.auditLog.create({
             data: {
-                userId: null, // Should be admin's user ID from session
+                userId: sessionUser.id,
                 entityType: 'ASSIGNMENT',
                 entityId: assignment.id,
                 action: 'CREATE',
@@ -74,7 +98,7 @@ export async function POST(request) {
                     writerId: user.profile.id,
                     title,
                     category,
-                    wordCount,
+                    wordCount: parsedWordCount,
                     priority
                 })
             }

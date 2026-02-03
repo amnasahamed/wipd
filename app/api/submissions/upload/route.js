@@ -3,16 +3,25 @@ import prisma from '@/lib/prisma';
 import { extractTextFromFile } from '@/lib/baseline/processor';
 import { calculateStyleMetrics, compareStyles } from '@/lib/intelligence/style-analyzer';
 import { analyzeSubmissionLLM } from '@/lib/intelligence/llm-adapter';
+import { requireWriter } from '@/lib/auth/session';
 
 export async function POST(request) {
     try {
+        const { user: sessionUser, errorResponse } = await requireWriter();
+        if (errorResponse) return errorResponse;
+
         const formData = await request.formData();
         const file = formData.get('file');
         const assignmentId = formData.get('assignmentId');
-        const writerId = formData.get('writerId');
+        const writerIdFromBody = formData.get('writerId');
+        const writerUserId = sessionUser.id;
 
-        if (!assignmentId || !writerId) {
+        if (!file || !assignmentId || !writerUserId) {
             return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
+        }
+
+        if (writerIdFromBody && writerIdFromBody !== writerUserId) {
+            return NextResponse.json({ error: "Forbidden" }, { status: 403 });
         }
 
         // 1. Text Extraction
@@ -24,12 +33,40 @@ export async function POST(request) {
         }
 
         // 2. Fetch Writer Profile & Baseline
-        // writerId here is likely the USER ID from frontend session. We need Profile ID.
+        // writerUserId is the User.id from frontend session. We need Profile ID.
         const profile = await prisma.profile.findUnique({
-            where: { userId: writerId }
+            where: { userId: writerUserId }
         });
 
         if (!profile) return NextResponse.json({ error: "Profile not found" }, { status: 404 });
+
+        // Ensure assignment exists and belongs to the writer
+        const assignment = await prisma.assignment.findUnique({
+            where: { id: assignmentId },
+            select: { id: true, writerId: true, status: true }
+        });
+
+        if (!assignment) return NextResponse.json({ error: "Assignment not found" }, { status: 404 });
+        if (assignment.writerId !== profile.id) {
+            return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+        }
+        if (assignment.status === 'COMPLETED') {
+            return NextResponse.json({ error: "Assignment is already completed" }, { status: 400 });
+        }
+
+        // Prevent resubmission unless admin requested a rewrite
+        const latestExisting = await prisma.submission.findFirst({
+            where: { assignmentId },
+            orderBy: { createdAt: 'desc' },
+            select: { id: true, status: true, createdAt: true }
+        });
+
+        if (latestExisting && latestExisting.status !== 'NEEDS_REWRITE') {
+            return NextResponse.json(
+                { error: `Cannot submit again while latest submission is ${latestExisting.status}` },
+                { status: 400 }
+            );
+        }
 
         // 3. Style Analysis (Fingerprinting)
         const currentMetrics = calculateStyleMetrics(text);
@@ -86,7 +123,8 @@ export async function POST(request) {
         // Update assignment status
         await prisma.assignment.update({
             where: { id: assignmentId },
-            data: { status: 'COMPLETED' }
+            // Keep assignment open until admin approval
+            data: { status: 'IN_PROGRESS' }
         });
 
         return NextResponse.json({

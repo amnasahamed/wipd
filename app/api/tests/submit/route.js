@@ -1,13 +1,18 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
+import { requireWriter } from '@/lib/auth/session';
 
 export async function POST(request) {
     try {
-        const body = await request.json();
-        const { userId, testType, responses } = body;
+        const { user: sessionUser, errorResponse } = await requireWriter();
+        if (errorResponse) return errorResponse;
 
-        if (!userId) {
-            return NextResponse.json({ error: 'User ID is required' }, { status: 400 });
+        const body = await request.json();
+        const { testType } = body;
+
+        const allowedTestTypes = new Set(['grammar', 'policy']);
+        if (!testType || !allowedTestTypes.has(testType)) {
+            return NextResponse.json({ error: 'Invalid test type' }, { status: 400 });
         }
 
         // Scoring logic for now (could be replaced with real validation)
@@ -23,14 +28,14 @@ export async function POST(request) {
         }
 
         await prisma.profile.update({
-            where: { userId },
+            where: { userId: sessionUser.id },
             data: updateData
         });
 
         // Log the action
         await prisma.auditLog.create({
             data: {
-                userId,
+                userId: sessionUser.id,
                 entityType: 'TEST',
                 entityId: testType,
                 action: 'SUBMIT',

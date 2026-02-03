@@ -1,23 +1,36 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
+import { requireAdmin } from '@/lib/auth/session';
 
 export const dynamic = 'force-dynamic';
 
-export async function GET() {
+export async function GET(request) {
     try {
+        const { errorResponse } = await requireAdmin();
+        if (errorResponse) return errorResponse;
+
+        const { searchParams } = new URL(request.url);
+        const includeSamples = searchParams.get('includeSamples') === 'true';
+
         const writers = await prisma.user.findMany({
             where: { role: 'WRITER' },
             include: {
                 profile: {
                     include: {
-                        submissions: true
+                        submissions: {
+                            include: {
+                                assignment: { select: { title: true } }
+                            }
+                        }
                     }
                 }
             }
         });
 
         const writersWithStats = writers.map(w => {
-            const subs = w.profile?.submissions || [];
+            const subs = includeSamples
+                ? (w.profile?.submissions || [])
+                : (w.profile?.submissions || []).filter(s => !s.assignment?.title?.startsWith('Onboarding Sample'));
             const approved = subs.filter(s => s.status === 'APPROVED').length;
             const rejected = subs.filter(s => s.status === 'REJECTED').length;
             const revisions = subs.filter(s => s.status === 'NEEDS_REWRITE').length;

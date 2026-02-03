@@ -1,8 +1,12 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
+import { requireAdmin } from '@/lib/auth/session';
 
 export async function POST(request) {
     try {
+        const { user: sessionUser, errorResponse } = await requireAdmin();
+        if (errorResponse) return errorResponse;
+
         const body = await request.json();
         const { userId, status } = body;
 
@@ -23,7 +27,7 @@ export async function POST(request) {
         // Log the action
         await prisma.auditLog.create({
             data: {
-                userId: null, // Admin ID
+                userId: sessionUser.id,
                 entityType: 'PROFILE',
                 entityId: profile.id,
                 action: 'STATUS_CHANGE',

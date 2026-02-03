@@ -51,8 +51,23 @@ export default function AssignmentsPage() {
         fetchUserAndAssignments();
     }, [fetchUserAndAssignments]);
 
+    const getAssignmentStatusKey = (assignment) => {
+        const submissionStatus = assignment.latestSubmission?.status;
+        if (submissionStatus === 'PENDING_REVIEW') return 'submitted';
+        if (submissionStatus === 'NEEDS_REWRITE') return 'revision';
+        if (submissionStatus === 'APPROVED') return 'completed';
+        if (submissionStatus === 'REJECTED') return 'rejected';
+
+        const assignmentStatus = assignment.status;
+        if (assignmentStatus === 'PENDING') return 'assigned';
+        if (assignmentStatus === 'IN_PROGRESS') return 'in_progress';
+        if (assignmentStatus === 'COMPLETED') return 'completed';
+        return 'assigned';
+    };
+
     const filteredAssignments = assignments.filter((item) => {
-        const matchesStatus = statusFilter === "all" || item.status.toLowerCase() === statusFilter.toLowerCase();
+        const statusKey = getAssignmentStatusKey(item);
+        const matchesStatus = statusFilter === "all" || statusKey === statusFilter.toLowerCase();
         const matchesSearch = item.title.toLowerCase().includes(searchQuery.toLowerCase());
         return matchesStatus && matchesSearch;
     });
@@ -61,10 +76,23 @@ export default function AssignmentsPage() {
         switch (status) {
             case "assigned": return "warning";
             case "in_progress": return "primary";
-            case "submitted": return "success";
+            case "submitted": return "primary";
+            case "revision": return "warning";
             case "completed": return "success";
-            case "revision": return "danger";
-            default: return "neutral";
+            case "rejected": return "danger";
+            default: return "primary";
+        }
+    };
+
+    const getStatusLabel = (status) => {
+        switch (status) {
+            case "assigned": return "Assigned";
+            case "in_progress": return "In progress";
+            case "submitted": return "Pending review";
+            case "revision": return "Revision requested";
+            case "completed": return "Completed";
+            case "rejected": return "Rejected";
+            default: return status.replaceAll("_", " ");
         }
     };
 
@@ -173,7 +201,9 @@ export default function AssignmentsPage() {
                                 <option value="assigned">Assigned</option>
                                 <option value="in_progress">In Progress</option>
                                 <option value="submitted">Submitted</option>
+                                <option value="revision">Revision Requested</option>
                                 <option value="completed">Completed</option>
+                                <option value="rejected">Rejected</option>
                             </select>
                         </div>
                     </div>
@@ -192,6 +222,8 @@ export default function AssignmentsPage() {
                         <div className={styles.assignmentsList}>
                             {filteredAssignments.map((assignment) => {
                                 const deadline = formatDeadline(assignment.deadline);
+                                const statusKey = getAssignmentStatusKey(assignment);
+                                const canSubmit = statusKey === 'assigned' || statusKey === 'in_progress' || statusKey === 'revision';
                                 return (
                                     <div key={assignment.id} className={styles.assignmentCard}>
                                         <div className={styles.assignmentHeader}>
@@ -222,15 +254,15 @@ export default function AssignmentsPage() {
                                             </span>
                                         </div>
                                         <div className={styles.assignmentFooter}>
-                                            <span className={`${styles.status} ${styles[getStatusClass(assignment.status.toLowerCase())]}`}>
-                                                {assignment.status.replace("_", " ")}
+                                            <span className={`${styles.status} ${styles[getStatusClass(statusKey)]}`}>
+                                                {getStatusLabel(statusKey)}
                                             </span>
-                                            {assignment.status.toLowerCase() !== "submitted" && assignment.status.toLowerCase() !== "completed" && (
+                                            {canSubmit && (
                                                 <Link href={`/writer/assignments/${assignment.id}/submit`} className="btn btn-primary btn-sm">
-                                                    {assignment.status.toLowerCase() === "assigned" ? "Start Working" : "Submit Work"}
+                                                    {statusKey === "assigned" ? "Start Working" : statusKey === "revision" ? "Submit Revision" : "Submit Work"}
                                                 </Link>
                                             )}
-                                            {assignment.status.toLowerCase() === "completed" && (
+                                            {statusKey === "completed" && (
                                                 <span style={{ fontSize: '12px', color: 'var(--success-600)', fontWeight: 500 }}>
                                                     Payment Released
                                                 </span>

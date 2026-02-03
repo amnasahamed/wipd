@@ -40,23 +40,44 @@ export default function AuditLogsPage() {
 
     const getActionBadge = (action) => {
         if (!action) return "neutral";
-        if (action.includes("approved") || action.includes("created")) return "success";
-        if (action.includes("rejected")) return "danger";
-        if (action.includes("reviewed") || action.includes("updated")) return "warning";
+        const normalized = action.toUpperCase();
+        if (normalized.includes("APPROVE")) return "success";
+        if (normalized.includes("REJECT")) return "danger";
+        if (normalized.includes("STATUS_CHANGE") || normalized.includes("UPDATE")) return "warning";
+        if (normalized.includes("CREATE") || normalized.includes("SUBMIT")) return "primary";
         return "neutral";
     };
 
     const getActionLabel = (action) => {
         if (!action) return "Unknown";
-        return action.split(".").map((word) =>
-            word.charAt(0).toUpperCase() + word.slice(1)
-        ).join(" ");
+        return action
+            .toLowerCase()
+            .split("_")
+            .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+            .join(" ");
+    };
+
+    const entityFilterMap = {
+        application: ["APPLICATION"],
+        submission: ["SUBMISSION"],
+        assignment: ["ASSIGNMENT"],
+        writer: ["USER", "PROFILE"],
+        settings: ["SYSTEMCONFIG", "SYSTEM_CONFIG"],
     };
 
     const filteredLogs = logs.filter((log) => {
         if (actionFilter === "all") return true;
-        return log.action.startsWith(actionFilter);
+        const allowedEntityTypes = entityFilterMap[actionFilter];
+        if (!allowedEntityTypes) return true;
+        return allowedEntityTypes.includes(log.entityType);
     });
+
+    const renderDetails = (details) => {
+        if (!details) return "";
+        if (typeof details === "string") return details;
+        if (typeof details === "object" && details.notes) return details.notes;
+        return JSON.stringify(details);
+    };
 
     if (loading) {
         return <div className={styles.adminLayout}><main className={styles.adminMain}>Loading...</main></div>;
@@ -172,11 +193,13 @@ export default function AuditLogsPage() {
                                         </div>
                                     </td>
                                     <td>
-                                        <span className={auditStyles.targetType}>{log.entity?.split(" ")[0]}</span>
-                                        <div className={auditStyles.targetName}>{log.entity}</div>
+                                        <span className={auditStyles.targetType}>{log.entityType || log.entity?.split(" ")[0]}</span>
+                                        <div className={auditStyles.targetName}>
+                                            {log.entityType && log.entityId ? `${log.entityType} ${log.entityId.substring(0, 8)}...` : log.entity}
+                                        </div>
                                     </td>
                                     <td className={auditStyles.detailsCell}>
-                                        {typeof log.details === 'object' ? JSON.stringify(log.details) : log.details}
+                                        {renderDetails(log.details)}
                                     </td>
                                 </tr>
                             ))}

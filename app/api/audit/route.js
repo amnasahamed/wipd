@@ -1,8 +1,12 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
+import { requireAdmin } from '@/lib/auth/session';
 
 export async function GET(request) {
     try {
+        const { errorResponse } = await requireAdmin();
+        if (errorResponse) return errorResponse;
+
         const { searchParams } = new URL(request.url);
         const entityType = searchParams.get('entityType');
 
@@ -19,6 +23,8 @@ export async function GET(request) {
                 id: log.id,
                 timestamp: log.createdAt,
                 action: log.action,
+                entityType: log.entityType,
+                entityId: log.entityId,
                 entity: `${log.entityType} ${log.entityId.substring(0, 8)}...`,
                 actor: {
                     name: log.user?.email?.split('@')[0] || 'System'

@@ -22,14 +22,26 @@ export default function SubmitWorkPage() {
     const [declaration, setDeclaration] = useState(false);
     const [submitSuccess, setSubmitSuccess] = useState(false);
 
+    const latestSubmissionStatus = assignment?.latestSubmission?.status || null;
+    const canSubmit = !loading && !!assignment && (!latestSubmissionStatus || latestSubmissionStatus === 'NEEDS_REWRITE');
+    const isRevision = latestSubmissionStatus === 'NEEDS_REWRITE';
+
     const fetchData = useCallback(async () => {
         setLoading(true);
         try {
             // Get current user
             const userRes = await fetch('/api/me');
             const userData = await userRes.json();
-            if (userData.id) {
-                setUser(userData);
+            if (userData.authenticated && userData.user) {
+                const currentUser = userData.user;
+                setUser({
+                    id: currentUser.id,
+                    fullName: currentUser.profile?.fullName || 'Writer',
+                    profile: currentUser.profile
+                });
+            } else {
+                window.location.href = '/login';
+                return;
             }
 
             // Get assignment details
@@ -76,6 +88,10 @@ export default function SubmitWorkPage() {
 
     const validateAndSetFile = (file) => {
         if (!file) return;
+        if (!canSubmit) {
+            alert('You can submit again only if a revision is requested.');
+            return;
+        }
 
         const validTypes = [
             "application/msword",
@@ -109,6 +125,10 @@ export default function SubmitWorkPage() {
     };
 
     const handleSubmit = () => {
+        if (!canSubmit) {
+            alert('You can submit again only if a revision is requested.');
+            return;
+        }
         if (!file || !declaration) return;
         setShowConfirmModal(true);
     };
@@ -118,6 +138,11 @@ export default function SubmitWorkPage() {
         setShowConfirmModal(false);
 
         try {
+            if (!canSubmit) {
+                alert('You can submit again only if a revision is requested.');
+                return;
+            }
+
             const formData = new FormData();
             formData.append("file", file);
             formData.append("assignmentId", params.id);
@@ -277,6 +302,47 @@ export default function SubmitWorkPage() {
                                 <h2>{assignment.title}</h2>
                             </div>
 
+                            {assignment.latestSubmission?.status === 'NEEDS_REWRITE' && assignment.latestSubmissionDecision?.notes && (
+                                <div style={{
+                                    marginTop: '12px',
+                                    padding: '12px',
+                                    borderRadius: '8px',
+                                    border: '1px solid var(--warning-200)',
+                                    background: 'var(--warning-50)',
+                                    color: 'var(--warning-900)'
+                                }}>
+                                    <div style={{ fontWeight: 700, marginBottom: '6px' }}>Revision requested</div>
+                                    <div style={{ whiteSpace: 'pre-wrap' }}>{assignment.latestSubmissionDecision.notes}</div>
+                                </div>
+                            )}
+
+                            {!!assignment.latestSubmission?.status && assignment.latestSubmission.status !== 'NEEDS_REWRITE' && (
+                                <div style={{
+                                    marginTop: '12px',
+                                    padding: '12px',
+                                    borderRadius: '8px',
+                                    border: '1px solid var(--border-light)',
+                                    background: 'var(--bg-secondary)',
+                                    color: 'var(--text-secondary)'
+                                }}>
+                                    {assignment.latestSubmission.status === 'PENDING_REVIEW' && (
+                                        <div>
+                                            <strong>Pending review:</strong> your latest submission is being reviewed. You can submit again only if a revision is requested.
+                                        </div>
+                                    )}
+                                    {assignment.latestSubmission.status === 'APPROVED' && (
+                                        <div>
+                                            <strong>Approved:</strong> this assignment has been approved and is closed.
+                                        </div>
+                                    )}
+                                    {assignment.latestSubmission.status === 'REJECTED' && (
+                                        <div>
+                                            <strong>Rejected:</strong> this submission was rejected. If you believe this is a mistake, contact the admin.
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+
                             <div className={submitStyles.assignmentMeta}>
                                 <div className={submitStyles.metaItem}>
                                     <span className={submitStyles.metaLabel}>Word Count</span>
@@ -316,13 +382,17 @@ export default function SubmitWorkPage() {
                             onDragOver={handleDragOver}
                             onDragLeave={handleDragLeave}
                             onDrop={handleDrop}
-                            onClick={() => fileInputRef.current?.click()}
+                            onClick={() => {
+                                if (!canSubmit) return;
+                                fileInputRef.current?.click();
+                            }}
                         >
                             <input
                                 ref={fileInputRef}
                                 type="file"
                                 accept=".doc,.docx"
                                 onChange={handleFileSelect}
+                                disabled={!canSubmit}
                                 hidden
                             />
 
@@ -397,7 +467,7 @@ export default function SubmitWorkPage() {
                         {/* Submit Button */}
                         <button
                             className="btn btn-primary btn-lg btn-full"
-                            disabled={!file || !declaration || isSubmitting}
+                            disabled={!canSubmit || !file || !declaration || isSubmitting}
                             onClick={handleSubmit}
                         >
                             {isSubmitting ? (
@@ -406,7 +476,7 @@ export default function SubmitWorkPage() {
                                     Uploading...
                                 </>
                             ) : (
-                                "Submit Work"
+                                isRevision ? "Submit Revision" : "Submit Work"
                             )}
                         </button>
                     </div>

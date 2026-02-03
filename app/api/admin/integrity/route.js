@@ -1,17 +1,23 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
+import { requireAdmin } from '@/lib/auth/session';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET(request) {
     try {
+        const { errorResponse } = await requireAdmin();
+        if (errorResponse) return errorResponse;
+
         const { searchParams } = new URL(request.url);
         const riskFilter = searchParams.get('risk'); // 'high', 'medium', 'low'
+        const includeSamples = searchParams.get('includeSamples') === 'true';
 
         // Fetch submissions with analysis results
         const submissions = await prisma.submission.findMany({
             where: {
                 NOT: { status: 'PENDING' }, // Only show submitted work
+                ...(includeSamples ? {} : { assignment: { NOT: { title: { startsWith: 'Onboarding Sample' } } } })
                 // Add specific risk filtering logic here if needed at DB level, 
                 // but for now we'll do it in memory or fetch all to show distribution
             },

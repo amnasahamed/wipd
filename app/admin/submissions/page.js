@@ -9,6 +9,25 @@ export default function SubmissionsPage() {
     const [searchQuery, setSearchQuery] = useState("");
     const [loading, setLoading] = useState(true);
 
+    const getStatusBadge = (status) => {
+        switch (status) {
+            case "approved":
+                return "badge-success";
+            case "rejected":
+                return "badge-danger";
+            case "needs_rewrite":
+                return "badge-warning";
+            case "pending_review":
+                return "badge-warning";
+            default:
+                return "badge-neutral";
+        }
+    };
+
+    const formatStatusLabel = (status) => {
+        return (status || "").replace(/_/g, " ");
+    };
+
     useEffect(() => {
         const fetchSubmissions = async () => {
             try {
@@ -30,12 +49,6 @@ export default function SubmissionsPage() {
         return item.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
             item.writer.toLowerCase().includes(searchQuery.toLowerCase());
     });
-
-    const getScoreColor = (score) => {
-        if (score >= 90) return styles.approved;
-        if (score >= 70) return styles.pending;
-        return styles.rejected;
-    };
 
     const formatDate = (dateString) => {
         return new Date(dateString).toLocaleString("en-US", {
@@ -132,8 +145,8 @@ export default function SubmissionsPage() {
                                             </div>
                                         </td>
                                         <td>
-                                            <span className={`badge ${item.status === 'flagged' ? 'badge-error' : item.status === 'reviewed' ? 'badge-success' : 'badge-warning'}`}>
-                                                {item.status}
+                                            <span className={`badge ${getStatusBadge(item.status)}`}>
+                                                {formatStatusLabel(item.status)}
                                             </span>
                                         </td>
                                         <td>

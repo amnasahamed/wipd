@@ -1,11 +1,15 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
+import { requireAdmin } from '@/lib/auth/session';
 
 export const dynamic = 'force-dynamic';
 
 // GET: Fetch single writer details
 export async function GET(request, { params }) {
     try {
+        const { errorResponse } = await requireAdmin();
+        if (errorResponse) return errorResponse;
+
         const { id } = await params;
 
         const writer = await prisma.user.findUnique({
@@ -76,6 +80,9 @@ export async function GET(request, { params }) {
 // PATCH: Update writer status
 export async function PATCH(request, { params }) {
     try {
+        const { errorResponse } = await requireAdmin();
+        if (errorResponse) return errorResponse;
+
         const { id } = await params;
         const body = await request.json();
         const { status } = body;
@@ -104,6 +111,9 @@ export async function PATCH(request, { params }) {
 // DELETE: Remove writer account
 export async function DELETE(request, { params }) {
     try {
+        const { errorResponse } = await requireAdmin();
+        if (errorResponse) return errorResponse;
+
         const { id } = await params;
 
         // Transaction to ensure clean cleanup

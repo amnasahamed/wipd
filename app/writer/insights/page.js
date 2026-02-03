@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import styles from "../dashboard.module.css";
 import insightStyles from "./insights.module.css";
 
@@ -10,6 +11,8 @@ export default function WriterInsightsPage() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [user, setUser] = useState(null);
+    const searchParams = useSearchParams();
+    const submissionIdFilter = searchParams.get('submissionId');
 
     const fetchInsights = useCallback(async () => {
         setLoading(true);
@@ -17,45 +20,62 @@ export default function WriterInsightsPage() {
             const userRes = await fetch('/api/me');
             const userData = await userRes.json();
 
-            if (userData.id) {
-                setUser(userData);
-                const assignmentsRes = await fetch(`/api/assignments/writer?writerId=${userData.id}`);
+            if (userData.authenticated && userData.user) {
+                const currentUser = userData.user;
+                setUser({
+                    id: currentUser.id,
+                    fullName: currentUser.profile?.fullName || 'Writer',
+                    profile: currentUser.profile
+                });
+
+                const assignmentsRes = await fetch(`/api/assignments/writer?writerId=${currentUser.id}`);
                 const assignmentsData = await assignmentsRes.json();
 
                 if (assignmentsData.success) {
                     const mappedInsights = assignmentsData.assignments
-                        .filter(a => a.submission && a.submission.analysis)
-                        .map(a => ({
-                            id: a.submission.id,
-                            assignment: a.title,
-                            submittedAt: a.submission.createdAt,
-                            status: a.status.toLowerCase(),
-                            feedback: {
-                                overallScore: a.submission.analysis.integrityScore >= 80 ? "excellent" : "good",
-                                styleAlignment: {
-                                    score: a.submission.analysis.stylometricScore || 0,
-                                    message: a.submission.analysis.stylometricScore >= 80 ?
-                                        "Excellent consistency with your established writing style." :
-                                        "Some variations from your typical style were detected.",
+                        .filter(a => a.latestSubmission)
+                        .map(a => {
+                            const integrityScore = a.latestSubmission.integrityScore || 0;
+                            const aiRiskScore = a.latestSubmission.aiRiskScore || 0;
+
+                            return {
+                                id: a.latestSubmission.id,
+                                assignmentId: a.id,
+                                assignment: a.title,
+                                submittedAt: a.latestSubmission.createdAt,
+                                status: (a.latestSubmission.status || 'PENDING_REVIEW').toLowerCase(),
+                                feedback: {
+                                    overallScore: integrityScore >= 85 ? "excellent" : integrityScore >= 70 ? "good" : "needs_work",
+                                    styleAlignment: {
+                                        score: integrityScore,
+                                        message: integrityScore >= 85
+                                            ? "Excellent consistency with your established writing style."
+                                            : integrityScore >= 70
+                                                ? "Some variations from your typical style were detected."
+                                                : "Significant variations from your typical style were detected.",
+                                    },
+                                    originality: {
+                                        score: integrityScore,
+                                        message: "Demonstrates good original thought and structure.",
+                                    },
+                                    citations: {
+                                        score: 100, // Mock for now
+                                        message: "All cited sources verified correctly.",
+                                    },
+                                    suggestions: [
+                                        aiRiskScore > 40 ? "Reduce AI-like phrasing; use more personal, specific wording." : "Maintain your current voice and pacing.",
+                                        integrityScore < 70 ? "Review your baseline style and keep sentence length/structure consistent." : "Keep sentence structure naturally varied."
+                                    ].filter(Boolean),
                                 },
-                                originality: {
-                                    score: a.submission.analysis.integrityScore || 0,
-                                    message: "Demonstrates good original thought and structure.",
-                                },
-                                citations: {
-                                    score: 100, // Mock for now
-                                    message: "All cited sources verified correctly.",
-                                },
-                                suggestions: [
-                                    "Maintain the current level of technical depth",
-                                    "Continue using varied sentence structures"
-                                ],
-                            },
-                        }));
+                                decisionNotes: a.latestSubmissionDecision?.notes || null
+                            };
+                        });
                     setInsights(mappedInsights);
                 } else {
                     setError(assignmentsData.error || 'Failed to fetch insights');
                 }
+            } else {
+                window.location.href = '/login';
             }
         } catch (err) {
             console.error('Error fetching insights:', err);
@@ -86,11 +106,14 @@ export default function WriterInsightsPage() {
     const getStatusBadge = (status) => {
         switch (status) {
             case "approved": return { text: "Approved", class: "success" };
-            case "revision_requested": return { text: "Revision Requested", class: "warning" };
-            case "pending": return { text: "Pending Review", class: "neutral" };
+            case "pending_review": return { text: "Pending Review", class: "neutral" };
+            case "needs_rewrite": return { text: "Revision Requested", class: "warning" };
+            case "rejected": return { text: "Rejected", class: "danger" };
             default: return { text: status, class: "neutral" };
         }
     };
+
+    const displayedInsights = submissionIdFilter ? insights.filter(i => i.id === submissionIdFilter) : insights;
 
     return (
         <div className={styles.dashboardLayout}>
@@ -172,13 +195,13 @@ export default function WriterInsightsPage() {
                             <p style={{ color: 'red' }}>{error}</p>
                             <button onClick={fetchInsights} className="btn btn-primary btn-sm">Retry</button>
                         </div>
-                    ) : insights.length === 0 ? (
+                    ) : displayedInsights.length === 0 ? (
                         <div style={{ textAlign: 'center', padding: '60px', background: 'var(--bg-primary)', borderRadius: 'var(--radius-xl)', border: '1px solid var(--border-light)' }}>
                             <h3 style={{ fontSize: '18px', fontWeight: 600 }}>No insights available yet</h3>
                             <p style={{ color: 'var(--text-secondary)' }}>Insights will appear once your submissions are analyzed.</p>
                         </div>
                     ) : (
-                        insights.map((insight) => {
+                        displayedInsights.map((insight) => {
                             const statusBadge = getStatusBadge(insight.status);
                             return (
                                 <div key={insight.id} className={insightStyles.insightCard}>
@@ -191,6 +214,20 @@ export default function WriterInsightsPage() {
                                         </div>
                                         <span className={`badge badge-${statusBadge.class}`}>{statusBadge.text}</span>
                                     </div>
+
+                                    {insight.decisionNotes && (insight.status === "needs_rewrite" || insight.status === "rejected") && (
+                                        <div style={{
+                                            marginTop: '12px',
+                                            padding: '12px',
+                                            borderRadius: '8px',
+                                            border: '1px solid var(--border-light)',
+                                            background: 'var(--bg-secondary)',
+                                            color: 'var(--text-primary)'
+                                        }}>
+                                            <div style={{ fontWeight: 700, marginBottom: '6px' }}>Admin notes</div>
+                                            <div style={{ whiteSpace: 'pre-wrap', color: 'var(--text-secondary)' }}>{insight.decisionNotes}</div>
+                                        </div>
+                                    )}
 
                                     {/* Score Cards */}
                                     <div className={insightStyles.scoreGrid}>
@@ -231,9 +268,9 @@ export default function WriterInsightsPage() {
                                         </div>
                                     )}
 
-                                    {insight.status.toLowerCase() === "revision_requested" && (
+                                    {insight.status === "needs_rewrite" && (
                                         <div className={insightStyles.cardActions}>
-                                            <Link href={`/writer/assignments/${insight.id}/submit`} className="btn btn-primary">
+                                            <Link href={`/writer/assignments/${insight.assignmentId}/submit`} className="btn btn-primary">
                                                 Submit Revision
                                             </Link>
                                         </div>

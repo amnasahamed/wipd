@@ -5,7 +5,6 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import styles from "../../admin.module.css";
 import detailStyles from "./submission-detail.module.css";
-import { analyzeSubmissionLLM } from "../../../../lib/intelligence/llm-adapter";
 
 export default function SubmissionDetailPage() {
     const { id } = useParams();
@@ -13,6 +12,47 @@ export default function SubmissionDetailPage() {
     const [llmResults, setLlmResults] = useState(null);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState(null);
+    const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
+
+    const buildLlmResultsFromSubmission = (submissionData) => {
+        const results = submissionData?.analysisResults || [];
+
+        const latest = results.reduce((acc, curr) => {
+            if (!acc) return curr;
+            const accDate = acc?.createdAt ? new Date(acc.createdAt) : null;
+            const currDate = curr?.createdAt ? new Date(curr.createdAt) : null;
+            if (!accDate || !currDate) return acc;
+            return currDate > accDate ? curr : acc;
+        }, results[0]);
+
+        let markers = [];
+        try {
+            markers = latest?.signals ? JSON.parse(latest.signals) : [];
+        } catch {
+            markers = [];
+        }
+
+        const aiRiskScore = Math.round(Number(submissionData?.aiRiskScore) || 0);
+        const reasoningText = latest?.reasoning || "Analysis pending.";
+
+        return {
+            aiRisk: {
+                score: aiRiskScore,
+                markers,
+                fragmentAnalysis: reasoningText,
+            },
+            citations: {
+                score: 0,
+                verifiedCount: 0,
+                totalCount: 0,
+                checkResults: [],
+            },
+            reasoning: {
+                score: 0,
+                analysis: reasoningText,
+            },
+        };
+    };
 
     useEffect(() => {
         const fetchData = async () => {
@@ -23,13 +63,10 @@ export default function SubmissionDetailPage() {
 
                 if (subData.success) {
                     setSubmission(subData.submission);
+                    setLlmResults(buildLlmResultsFromSubmission(subData.submission));
                 } else {
                     setError(subData.error || 'Failed to fetch submission');
                 }
-
-                // Fetch LLM analysis
-                const llmData = await analyzeSubmissionLLM(id);
-                setLlmResults(llmData);
             } catch (err) {
                 console.error('Error fetching submission:', err);
                 setError('Error loading submission details');
@@ -79,6 +116,36 @@ export default function SubmissionDetailPage() {
     const styleMatch = submission.integrityScore || 0;
     const internalSimilarity = 0; // Not yet implemented in schema
 
+    const updateSubmissionStatus = async (status, notes) => {
+        setIsUpdatingStatus(true);
+        try {
+            const res = await fetch(`/api/submissions/${id}`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ status, notes })
+            });
+
+            const data = await res.json();
+            if (!res.ok || !data.success) {
+                throw new Error(data.error || 'Failed to update submission');
+            }
+
+            setSubmission((prev) => {
+                if (!prev) return prev;
+                return {
+                    ...prev,
+                    status: data.submission.status,
+                    updatedAt: data.submission.updatedAt
+                };
+            });
+        } catch (err) {
+            console.error('Update status error:', err);
+            alert(err.message || 'Failed to update submission');
+        } finally {
+            setIsUpdatingStatus(false);
+        }
+    };
+
     return (
         <div className={styles.adminLayout}>
             <aside className={styles.sidebar}>
@@ -113,8 +180,45 @@ export default function SubmissionDetailPage() {
                     </div>
                     <div className={detailStyles.actions}>
                         <button className="btn btn-secondary">Download PDF</button>
-                        <button className="btn btn-danger">Reject</button>
-                        <button className="btn btn-success">Approve Submission</button>
+                        <button
+                            className="btn btn-warning"
+                            disabled={isUpdatingStatus}
+                            onClick={() => {
+                                const reason = prompt('Reason / notes for revision request:');
+                                if (reason === null) return;
+                                if (reason.trim().length === 0) {
+                                    alert('Notes are required to request a revision.');
+                                    return;
+                                }
+                                updateSubmissionStatus('NEEDS_REWRITE', reason);
+                            }}
+                        >
+                            Request Revision
+                        </button>
+                        <button
+                            className="btn btn-danger"
+                            disabled={isUpdatingStatus}
+                            onClick={() => {
+                                const confirmed = confirm('Reject this submission?');
+                                if (!confirmed) return;
+                                const reason = prompt('Reason / notes for rejection:');
+                                if (reason === null) return;
+                                if (reason.trim().length === 0) {
+                                    alert('Notes are required to reject a submission.');
+                                    return;
+                                }
+                                updateSubmissionStatus('REJECTED', reason);
+                            }}
+                        >
+                            Reject
+                        </button>
+                        <button
+                            className="btn btn-success"
+                            disabled={isUpdatingStatus}
+                            onClick={() => updateSubmissionStatus('APPROVED')}
+                        >
+                            Approve Submission
+                        </button>
                     </div>
                 </div>
 
