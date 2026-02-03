@@ -65,28 +65,38 @@ export default function ApplicationsPage() {
                 </div>
             </div>
 
-            <div className={styles.dataTableContainer}>
-                <div className={styles.tableHeader}>
-                    <h2 className={styles.tableTitle}>All Applications</h2>
-                    <div className={styles.tableActions}>
-                        <button onClick={fetchApplications} className={styles.filterBtn} style={{ marginRight: '10px' }}>
+            <div className={styles.dashboardCard}>
+                <div className={styles.cardHeader}>
+                    <h3>All Applications</h3>
+                    <div className={styles.headerActions} style={{ gap: '12px' }}>
+                        <button onClick={fetchApplications} className={styles.actionBtn}>
                             Refresh
                         </button>
-                        <div className={styles.searchInput}>
-                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
-                            </svg>
+                        <div style={{ position: 'relative' }}>
                             <input
                                 type="text"
-                                placeholder="Search by name or email..."
+                                placeholder="Search..."
                                 value={searchQuery}
                                 onChange={(e) => setSearchQuery(e.target.value)}
+                                style={{
+                                    padding: '8px 12px',
+                                    borderRadius: '6px',
+                                    border: '1px solid #e2e8f0',
+                                    fontSize: '13px',
+                                    width: '240px'
+                                }}
                             />
                         </div>
                         <select
-                            className={styles.filterBtn}
                             value={statusFilter}
                             onChange={(e) => setStatusFilter(e.target.value)}
+                            style={{
+                                padding: '8px 12px',
+                                borderRadius: '6px',
+                                border: '1px solid #e2e8f0',
+                                fontSize: '13px',
+                                backgroundColor: '#fff'
+                            }}
                         >
                             <option value="all">All Status</option>
                             <option value="onboarding">Onboarding</option>
@@ -97,112 +107,82 @@ export default function ApplicationsPage() {
                 </div>
 
                 {loading ? (
-                    <div className={styles.emptyState}>
+                    <div style={{ padding: '40px', textAlign: 'center', color: '#64748b' }}>
                         <div className="spinner"></div>
-                        <p>Loading applications...</p>
+                        <p style={{ marginTop: '10px' }}>Loading applications...</p>
                     </div>
                 ) : error ? (
-                    <div className={styles.emptyState}>
-                        <p style={{ color: 'red' }}>{error}</p>
-                        <button onClick={fetchApplications} className={styles.filterBtn}>Retry</button>
+                    <div style={{ padding: '40px', textAlign: 'center', color: '#ef4444' }}>
+                        <p>{error}</p>
+                        <button onClick={fetchApplications} className="btn btn-sm btn-outline" style={{ marginTop: '10px' }}>Retry</button>
                     </div>
                 ) : (
-                    <table className={styles.dataTable}>
-                        <thead>
-                            <tr>
-                                <th>Applicant</th>
-                                <th>Applied Date</th>
-                                <th>Test Scores</th>
-                                <th>Status</th>
-                                <th>Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {filteredApplications.map((app) => (
-                                <tr key={app.id}>
-                                    <td>
-                                        <div className={styles.applicantInfo}>
-                                            <div className={styles.applicantAvatar}>
-                                                {app.name.split(" ").map(n => n[0]).join("")}
-                                            </div>
-                                            <div>
-                                                <div className={styles.applicantName}>{app.name}</div>
-                                                <div className={styles.applicantEmail}>{app.email}</div>
-                                            </div>
-                                        </div>
-                                    </td>
-                                    <td>{formatDate(app.appliedAt)}</td>
-                                    <td>
-                                        <div className={styles.testScore}>
-                                            <div className={styles.scoreText}>G: {app.grammarScore || 0}%</div>
-                                            <div className={styles.scoreBar}>
-                                                <div
-                                                    className={`${styles.scoreFill} ${getScoreClass(app.grammarScore || 0)}`}
-                                                    style={{ width: `${app.grammarScore || 0}%` }}
-                                                ></div>
-                                            </div>
-                                        </div>
-                                        <div className={styles.testScore} style={{ marginTop: '4px' }}>
-                                            <div className={styles.scoreText}>P: {app.policyScore || 0}%</div>
-                                            <div className={styles.scoreBar}>
-                                                <div
-                                                    className={`${styles.scoreFill} ${getScoreClass(app.policyScore || 0)}`}
-                                                    style={{ width: `${app.policyScore || 0}%` }}
-                                                ></div>
-                                            </div>
-                                        </div>
-                                    </td>
-                                    <td>
-                                        <span className={`${styles.statusBadge} ${styles[app.status.toLowerCase()]}`}>
-                                            {app.status}
-                                        </span>
-                                    </td>
-                                    <td>
-                                        <div className={styles.actionButtons}>
-                                            <Link href={`/admin/applications/${app.id}`} className={`${styles.actionBtn} ${styles.view}`} title="View Details">
-                                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-                                                    <path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178Z" />
-                                                    <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
-                                                </svg>
-                                            </Link>
-                                        </div>
-                                    </td>
+                    <div className={styles.tableResponsive}>
+                        <table className={styles.table}>
+                            <thead>
+                                <tr>
+                                    <th>Applicant</th>
+                                    <th>Applied Date</th>
+                                    <th>Test Scores</th>
+                                    <th>Status</th>
+                                    <th></th>
                                 </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                )}
-
-                {filteredApplications.length === 0 && (
-                    <div className={styles.emptyState}>
-                        <div className={styles.emptyIcon}>
-                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z" />
-                            </svg>
-                        </div>
-                        <h3>No applications found</h3>
-                        <p>Try adjusting your search or filters.</p>
+                            </thead>
+                            <tbody>
+                                {filteredApplications.length === 0 ? (
+                                    <tr>
+                                        <td colSpan="5" style={{ textAlign: 'center', padding: '40px', color: '#64748b' }}>
+                                            No applications found matching your criteria.
+                                        </td>
+                                    </tr>
+                                ) : (
+                                    filteredApplications.map((app) => (
+                                        <tr key={app.id}>
+                                            <td>
+                                                <div className={styles.writerInfo}>
+                                                    <div className={styles.avatar}>
+                                                        {app.name.split(" ").map(n => n[0]).join("")}
+                                                    </div>
+                                                    <div>
+                                                        <div className={styles.writerName}>{app.name}</div>
+                                                        <div className={styles.writerEmail}>{app.email}</div>
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td style={{ color: '#64748b', fontSize: '13px' }}>{formatDate(app.appliedAt)}</td>
+                                            <td>
+                                                <div style={{ display: 'flex', gap: '16px' }}>
+                                                    <div>
+                                                        <div style={{ fontSize: '11px', color: '#64748b', marginBottom: '2px' }}>Grammar</div>
+                                                        <div style={{ width: '60px', height: '4px', background: '#e2e8f0', borderRadius: '2px' }}>
+                                                            <div style={{ width: `${app.grammarScore || 0}%`, height: '100%', background: app.grammarScore >= 80 ? '#22c55e' : '#f59e0b', borderRadius: '2px' }}></div>
+                                                        </div>
+                                                    </div>
+                                                    <div>
+                                                        <div style={{ fontSize: '11px', color: '#64748b', marginBottom: '2px' }}>Policy</div>
+                                                        <div style={{ width: '60px', height: '4px', background: '#e2e8f0', borderRadius: '2px' }}>
+                                                            <div style={{ width: `${app.policyScore || 0}%`, height: '100%', background: app.policyScore >= 80 ? '#22c55e' : '#f59e0b', borderRadius: '2px' }}></div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td>
+                                                <span className={`badge ${app.status.toLowerCase() === 'active' ? 'badge-success' : app.status.toLowerCase() === 'rejected' ? 'badge-error' : 'badge-warning'}`}>
+                                                    {app.status}
+                                                </span>
+                                            </td>
+                                            <td>
+                                                <Link href={`/admin/applications/${app.id}`} className={styles.actionBtn}>
+                                                    Review
+                                                </Link>
+                                            </td>
+                                        </tr>
+                                    ))
+                                )}
+                            </tbody>
+                        </table>
                     </div>
                 )}
-
-                <div className={styles.tablePagination}>
-                    <div className={styles.paginationInfo}>
-                        Showing {filteredApplications.length} of {applications.length} applications
-                    </div>
-                    <div className={styles.paginationControls}>
-                        <button className={styles.paginationBtn} disabled>
-                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" width="16" height="16">
-                                <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5 8.25 12l7.5-7.5" />
-                            </svg>
-                        </button>
-                        <button className={`${styles.paginationBtn} ${styles.active}`}>1</button>
-                        <button className={styles.paginationBtn} disabled>
-                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" width="16" height="16">
-                                <path strokeLinecap="round" strokeLinejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" />
-                            </svg>
-                        </button>
-                    </div>
-                </div>
             </div>
         </main>
     );

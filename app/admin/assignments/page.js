@@ -121,22 +121,35 @@ export default function AssignmentsPage() {
                 </Link>
             </div>
 
-            <div className={styles.dataTableContainer}>
-                <div className={styles.tableHeader}>
-                    <h2 className={styles.tableTitle}>All Tasks</h2>
-                    <div className={styles.tableActions}>
-                        <div className={styles.searchInput}>
+            <div className={styles.dashboardCard}>
+                <div className={styles.cardHeader}>
+                    <h3>All Tasks</h3>
+                    <div className={styles.headerActions} style={{ gap: '12px' }}>
+                        <div style={{ position: 'relative' }}>
                             <input
                                 type="text"
                                 placeholder="Search by title or writer..."
                                 value={searchQuery}
                                 onChange={(e) => setSearchQuery(e.target.value)}
+                                style={{
+                                    padding: '8px 12px',
+                                    borderRadius: '6px',
+                                    border: '1px solid #e2e8f0',
+                                    fontSize: '13px',
+                                    width: '240px'
+                                }}
                             />
                         </div>
                         <select
-                            className={styles.filterBtn}
                             value={statusFilter}
                             onChange={(e) => setStatusFilter(e.target.value)}
+                            style={{
+                                padding: '8px 12px',
+                                borderRadius: '6px',
+                                border: '1px solid #e2e8f0',
+                                fontSize: '13px',
+                                backgroundColor: '#fff'
+                            }}
                         >
                             <option value="all">All Status</option>
                             <option value="created">Created</option>
@@ -147,58 +160,67 @@ export default function AssignmentsPage() {
                     </div>
                 </div>
 
-                <table className={styles.dataTable}>
-                    <thead>
-                        <tr>
-                            <th>Assignment Title</th>
-                            <th>Writer</th>
-                            <th>Type</th>
-                            <th>Deadline</th>
-                            <th>Reward</th>
-                            <th>Status</th>
-                            <th>Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {filteredAssignments.map((item) => (
-                            <tr key={item.id}>
-                                <td>
-                                    <div style={{ fontWeight: 500, color: 'var(--text-primary)', maxWidth: '280px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                                        {item.title}
-                                    </div>
-                                </td>
-                                <td>{item.writer}</td>
-                                <td>
-                                    <span className={`badge ${item.type === 'technical' ? 'badge-primary' : 'badge-neutral'}`} style={{ fontSize: '10px' }}>
-                                        {item.type}
-                                    </span>
-                                </td>
-                                <td style={{ color: 'var(--text-secondary)', fontSize: '13px' }}>{item.deadline}</td>
-                                <td style={{ fontWeight: 600, color: 'var(--primary-700)' }}>{item.reward}</td>
-                                <td>
-                                    <span className={`${styles.statusBadge} ${getStatusStyle(item.status)}`}>
-                                        {item.status.replace('-', ' ')}
-                                    </span>
-                                </td>
-                                <td>
-                                    <div className={styles.actionButtons}>
-                                        <button className={styles.actionBtn}>
-                                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" width="16" height="16">
-                                                <path strokeLinecap="round" strokeLinejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897L16.863 4.487Zm0 0L19.5 7.125" />
-                                            </svg>
-                                        </button>
-                                    </div>
-                                </td>
+                <div className={styles.tableResponsive}>
+                    <table className={styles.table}>
+                        <thead>
+                            <tr>
+                                <th>Assignment Title</th>
+                                <th>Writer</th>
+                                <th>Type</th>
+                                <th>Deadline</th>
+                                <th>Reward</th>
+                                <th>Status</th>
+                                <th>Actions</th>
                             </tr>
-                        ))}
-                    </tbody>
-                </table>
-
-                {filteredAssignments.length === 0 && (
-                    <div className={styles.emptyState}>
-                        <h3>No assignments found</h3>
-                    </div>
-                )}
+                        </thead>
+                        <tbody>
+                            {filteredAssignments.length === 0 ? (
+                                <tr>
+                                    <td colSpan="7" style={{ textAlign: 'center', padding: '40px', color: '#64748b' }}>
+                                        No assignments found matching your criteria.
+                                    </td>
+                                </tr>
+                            ) : (
+                                filteredAssignments.map((item) => (
+                                    <tr key={item.id}>
+                                        <td>
+                                            <div style={{ fontWeight: 500, color: '#334155', maxWidth: '280px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                                {item.title}
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <div className={styles.writerInfo} style={{ gap: '8px' }}>
+                                                <div className={styles.avatar} style={{ width: '28px', height: '28px', fontSize: '11px', background: '#f1f5f9', color: '#64748b' }}>
+                                                    {(item.writer[0])}
+                                                </div>
+                                                <span style={{ fontSize: '13px' }}>{item.writer}</span>
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <span className={`badge ${item.type === 'technical' ? 'badge-primary' : 'badge-neutral'}`} style={{ fontSize: '10px', textTransform: 'capitalize' }}>
+                                                {item.type}
+                                            </span>
+                                        </td>
+                                        <td style={{ color: '#64748b', fontSize: '13px' }}>{item.deadline}</td>
+                                        <td style={{ fontWeight: 600, color: '#334155' }}>{item.reward}</td>
+                                        <td>
+                                            <span className={`badge ${item.status === 'completed' ? 'badge-success' : item.status === 'submitted' ? 'badge-warning' : 'badge-neutral'}`}>
+                                                {item.status.replace('-', ' ')}
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <div className={styles.actionButtons}>
+                                                <button className={styles.actionBtn}>
+                                                    Review
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                ))
+                            )}
+                        </tbody>
+                    </table>
+                </div>
             </div>
         </main>
     );

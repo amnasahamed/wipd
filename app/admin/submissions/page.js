@@ -76,79 +76,94 @@ export default function SubmissionsPage() {
                 </div>
             </div>
 
-            <div className={styles.dataTableContainer}>
-                <div className={styles.tableHeader}>
-                    <h2 className={styles.tableTitle}>Recent Submissions</h2>
-                    <div className={styles.tableActions}>
-                        <div className={styles.searchInput}>
+            <div className={styles.dashboardCard}>
+                <div className={styles.cardHeader}>
+                    <h3>Recent Submissions</h3>
+                    <div className={styles.headerActions}>
+                        <div style={{ position: 'relative' }}>
                             <input
                                 type="text"
                                 placeholder="Search submissions..."
                                 value={searchQuery}
                                 onChange={(e) => setSearchQuery(e.target.value)}
+                                style={{
+                                    padding: '8px 12px',
+                                    borderRadius: '6px',
+                                    border: '1px solid #e2e8f0',
+                                    fontSize: '13px',
+                                    width: '240px'
+                                }}
                             />
                         </div>
                     </div>
                 </div>
 
-                <table className={styles.dataTable}>
-                    <thead>
-                        <tr>
-                            <th>Submission</th>
-                            <th>Writer</th>
-                            <th>Submitted At</th>
-                            <th>Integrity Score</th>
-                            <th>AI/Plagiarism</th>
-                            <th>Status</th>
-                            <th>Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {filteredSubmissions.map((item) => (
-                            <tr key={item.id}>
-                                <td>
-                                    <div style={{ fontWeight: 500, color: 'var(--text-primary)' }}>{item.title}</div>
-                                </td>
-                                <td>{item.writer}</td>
-                                <td style={{ color: 'var(--text-tertiary)', fontSize: '12px' }}>{formatDate(item.submittedAt)}</td>
-                                <td>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                        <span style={{
-                                            fontWeight: 700,
-                                            fontSize: '14px',
-                                            padding: '2px 8px',
-                                            borderRadius: '4px',
-                                            background: item.integrityScore >= 90 ? 'var(--success-100)' : item.integrityScore >= 70 ? 'var(--warning-100)' : 'var(--danger-100)',
-                                            color: item.integrityScore >= 90 ? 'var(--success-700)' : item.integrityScore >= 70 ? 'var(--warning-700)' : 'var(--danger-700)'
-                                        }}>
-                                            {item.integrityScore}
-                                        </span>
-                                    </div>
-                                </td>
-                                <td>
-                                    <div style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>
-                                        AI: <span style={{ color: item.aiScore > 20 ? 'var(--danger-600)' : 'inherit' }}>{item.aiScore}%</span> |
-                                        Plag: <span style={{ color: item.plagiarismScore > 5 ? 'var(--danger-600)' : 'inherit' }}>{item.plagiarismScore}%</span>
-                                    </div>
-                                </td>
-                                <td>
-                                    <span className={`${styles.statusBadge} ${item.status === 'flagged' ? styles.rejected : item.status === 'reviewed' ? styles.approved : styles.pending}`}>
-                                        {item.status}
-                                    </span>
-                                </td>
-                                <td>
-                                    <div className={styles.actionButtons}>
-                                        <Link href={`/admin/integrity?id=${item.id}`} className={styles.actionBtn} title="View Integrity Report">
-                                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" width="16" height="16">
-                                                <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h3.75M9 15h3.375M9 18h3.375m1.875-12h-.375a3.375 3.375 0 0 1-3.375-3.375V1.125m1.875 4.875c.068 0 .135.01.201.028a3.375 3.375 0 0 1 6.75 0c.066-.018.133-.028.201-.028H21a3.375 3.375 0 0 1 3.375 3.375v14.25a3.375 3.375 0 0 1-3.375 3.375H9a3.375 3.375 0 0 1-3.375-3.375V8.25A3.375 3.375 0 0 1 9 4.875Z" />
-                                            </svg>
-                                        </Link>
-                                    </div>
-                                </td>
+                <div className={styles.tableResponsive}>
+                    <table className={styles.table}>
+                        <thead>
+                            <tr>
+                                <th>Submission</th>
+                                <th>Writer</th>
+                                <th>Submitted At</th>
+                                <th>Integrity Score</th>
+                                <th>AI/Plagiarism</th>
+                                <th>Status</th>
+                                <th>Actions</th>
                             </tr>
-                        ))}
-                    </tbody>
-                </table>
+                        </thead>
+                        <tbody>
+                            {filteredSubmissions.length === 0 ? (
+                                <tr>
+                                    <td colSpan="7" style={{ textAlign: 'center', padding: '40px', color: '#64748b' }}>
+                                        No submissions found.
+                                    </td>
+                                </tr>
+                            ) : (
+                                filteredSubmissions.map((item) => (
+                                    <tr key={item.id}>
+                                        <td>
+                                            <div style={{ fontWeight: 500, color: '#334155', maxWidth: '240px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.title}</div>
+                                        </td>
+                                        <td>{item.writer}</td>
+                                        <td style={{ color: '#64748b', fontSize: '12px' }}>{formatDate(item.submittedAt)}</td>
+                                        <td>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                                <span style={{
+                                                    fontWeight: 700,
+                                                    fontSize: '14px',
+                                                    padding: '2px 8px',
+                                                    borderRadius: '4px',
+                                                    background: item.integrityScore >= 90 ? '#dcfce7' : item.integrityScore >= 70 ? '#fef9c3' : '#fee2e2',
+                                                    color: item.integrityScore >= 90 ? '#166534' : item.integrityScore >= 70 ? '#854d0e' : '#991b1b'
+                                                }}>
+                                                    {item.integrityScore}
+                                                </span>
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <div style={{ fontSize: '11px', color: '#64748b' }}>
+                                                AI: <span style={{ color: item.aiScore > 20 ? '#ef4444' : 'inherit', fontWeight: item.aiScore > 20 ? 600 : 400 }}>{item.aiScore}%</span> |
+                                                Plag: <span style={{ color: item.plagiarismScore > 5 ? '#ef4444' : 'inherit', fontWeight: item.plagiarismScore > 5 ? 600 : 400 }}>{item.plagiarismScore}%</span>
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <span className={`badge ${item.status === 'flagged' ? 'badge-error' : item.status === 'reviewed' ? 'badge-success' : 'badge-warning'}`}>
+                                                {item.status}
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <div className={styles.actionButtons}>
+                                                <Link href={`/admin/integrity?id=${item.id}`} className={styles.actionBtn} title="View Integrity Report">
+                                                    View Report
+                                                </Link>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                ))
+                            )}
+                        </tbody>
+                    </table>
+                </div>
             </div>
         </main>
     );

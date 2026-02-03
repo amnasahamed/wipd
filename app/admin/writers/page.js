@@ -63,28 +63,38 @@ export default function WritersPage() {
                 </div>
             </div>
 
-            <div className={styles.dataTableContainer}>
-                <div className={styles.tableHeader}>
-                    <h2 className={styles.tableTitle}>All Writers</h2>
-                    <div className={styles.tableActions}>
-                        <button onClick={fetchWriters} className={styles.filterBtn} style={{ marginRight: '10px' }}>
+            <div className={styles.dashboardCard}>
+                <div className={styles.cardHeader}>
+                    <h3>All Writers</h3>
+                    <div className={styles.headerActions} style={{ gap: '12px' }}>
+                        <button onClick={fetchWriters} className={styles.actionBtn}>
                             Refresh
                         </button>
-                        <div className={styles.searchInput}>
-                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
-                            </svg>
+                        <div style={{ position: 'relative' }}>
                             <input
                                 type="text"
                                 placeholder="Search writers..."
                                 value={searchQuery}
                                 onChange={(e) => setSearchQuery(e.target.value)}
+                                style={{
+                                    padding: '8px 12px',
+                                    borderRadius: '6px',
+                                    border: '1px solid #e2e8f0',
+                                    fontSize: '13px',
+                                    width: '240px'
+                                }}
                             />
                         </div>
                         <select
-                            className={styles.filterBtn}
                             value={statusFilter}
                             onChange={(e) => setStatusFilter(e.target.value)}
+                            style={{
+                                padding: '8px 12px',
+                                borderRadius: '6px',
+                                border: '1px solid #e2e8f0',
+                                fontSize: '13px',
+                                backgroundColor: '#fff'
+                            }}
                         >
                             <option value="all">All Status</option>
                             <option value="approved">Active</option>
@@ -94,79 +104,70 @@ export default function WritersPage() {
                 </div>
 
                 {loading ? (
-                    <div className={styles.emptyState}>
+                    <div style={{ padding: '40px', textAlign: 'center', color: '#64748b' }}>
                         <div className="spinner"></div>
-                        <p>Loading writers...</p>
+                        <p style={{ marginTop: '10px' }}>Loading writers...</p>
                     </div>
                 ) : error ? (
-                    <div className={styles.emptyState}>
-                        <p style={{ color: 'red' }}>{error}</p>
-                        <button onClick={fetchWriters} className={styles.filterBtn}>Retry</button>
+                    <div style={{ padding: '40px', textAlign: 'center', color: '#ef4444' }}>
+                        <p>{error}</p>
+                        <button onClick={fetchWriters} className="btn btn-sm btn-outline" style={{ marginTop: '10px' }}>Retry</button>
                     </div>
                 ) : (
-                    <table className={styles.dataTable}>
-                        <thead>
-                            <tr>
-                                <th>Writer</th>
-                                <th>Avg. Score</th>
-                                <th>Status</th>
-                                <th>Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {filteredWriters.map((writer) => (
-                                <tr key={writer.id}>
-                                    <td>
-                                        <div className={styles.applicantInfo}>
-                                            <div className={styles.applicantAvatar} style={{ background: 'var(--success-100)', color: 'var(--success-700)' }}>
-                                                {(writer.fullName || 'U').split(" ").map(n => n[0]).join("")}
-                                            </div>
-                                            <div>
-                                                <div className={styles.applicantName}>{writer.fullName || 'No Name'}</div>
-                                                <div className={styles.applicantEmail}>{writer.email}</div>
-                                            </div>
-                                        </div>
-                                    </td>
-                                    <td>
-                                        <div className={styles.testScore}>
-                                            <div className={styles.scoreText}>G: {writer.grammarScore || 0}%</div>
-                                            <div className={styles.scoreBar} style={{ width: '80px' }}>
-                                                <div
-                                                    className={`${styles.scoreFill} ${getScoreClass(writer.grammarScore || 0)}`}
-                                                    style={{ width: `${writer.grammarScore || 0}%` }}
-                                                ></div>
-                                            </div>
-                                        </div>
-                                    </td>
-                                    <td>
-                                        <span className={`${styles.statusBadge} ${styles[writer.status.toLowerCase() === 'active' ? 'approved' : 'probation']}`}>
-                                            {writer.status}
-                                        </span>
-                                    </td>
-                                    <td>
-                                        <div className={styles.actionButtons}>
-                                            <Link href={`/admin/writers/${writer.id}`} className={`${styles.actionBtn} ${styles.view}`} title="View Profile">
-                                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-                                                    <path strokeLinecap="round" strokeLinejoin="round" d="M17.982 18.725A7.488 7.488 0 0 0 12 15.75a7.488 7.488 0 0 0-5.982 2.975m11.963 0a9 9 0 1 0-11.963 0m11.963 0A8.966 8.966 0 0 1 12 21a8.966 8.966 0 0 1-5.982-2.275M15 9.75a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
-                                                </svg>
-                                            </Link>
-                                        </div>
-                                    </td>
+                    <div className={styles.tableResponsive}>
+                        <table className={styles.table}>
+                            <thead>
+                                <tr>
+                                    <th>Writer</th>
+                                    <th>Avg. Score</th>
+                                    <th>Status</th>
+                                    <th></th>
                                 </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                )}
-
-                {filteredWriters.length === 0 && (
-                    <div className={styles.emptyState}>
-                        <div className={styles.emptyIcon}>
-                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0A17.933 17.933 0 0 1 12 21.75c-2.676 0-5.216-.584-7.499-1.632Z" />
-                            </svg>
-                        </div>
-                        <h3>No writers found</h3>
-                        <p>Try adjusting your search or filters.</p>
+                            </thead>
+                            <tbody>
+                                {filteredWriters.length === 0 ? (
+                                    <tr>
+                                        <td colSpan="4" style={{ textAlign: 'center', padding: '40px', color: '#64748b' }}>
+                                            No writers found matching your criteria.
+                                        </td>
+                                    </tr>
+                                ) : (
+                                    filteredWriters.map((writer) => (
+                                        <tr key={writer.id}>
+                                            <td>
+                                                <div className={styles.writerInfo}>
+                                                    <div className={styles.avatar} style={{ background: '#dcfce7', color: '#166534' }}>
+                                                        {(writer.fullName || 'U').split(" ").map(n => n[0]).join("")}
+                                                    </div>
+                                                    <div>
+                                                        <div className={styles.writerName}>{writer.fullName || 'No Name'}</div>
+                                                        <div className={styles.writerEmail}>{writer.email}</div>
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td>
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                                    <div style={{ width: '80px', height: '6px', background: '#e2e8f0', borderRadius: '3px' }}>
+                                                        <div style={{ width: `${writer.grammarScore || 0}%`, height: '100%', background: writer.grammarScore >= 80 ? '#22c55e' : '#f59e0b', borderRadius: '3px' }}></div>
+                                                    </div>
+                                                    <span style={{ fontSize: '12px', fontWeight: 600, color: '#475569' }}>{writer.grammarScore}%</span>
+                                                </div>
+                                            </td>
+                                            <td>
+                                                <span className={`badge ${writer.status.toLowerCase() === 'active' ? 'badge-success' : 'badge-warning'}`}>
+                                                    {writer.status}
+                                                </span>
+                                            </td>
+                                            <td>
+                                                <Link href={`/admin/writers/${writer.id}`} className={styles.actionBtn}>
+                                                    View Profile
+                                                </Link>
+                                            </td>
+                                        </tr>
+                                    ))
+                                )}
+                            </tbody>
+                        </table>
                     </div>
                 )}
             </div>
