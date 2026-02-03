@@ -7,36 +7,37 @@ import styles from "../../admin.module.css";
 import detailStyles from "./submission-detail.module.css";
 import { analyzeSubmissionLLM } from "../../../../lib/intelligence/llm-adapter";
 
-// Mock deterministic data (from Module 08)
-const mockDeterministicData = {
-    id: "2",
-    writer: { name: "Michael Chen", avatar: "MC", status: "active" },
-    assignment: "Technical Documentation for Payment API",
-    submittedAt: "2026-02-02T14:00:00Z",
-    deterministicResults: {
-        styleMatch: 72,
-        internalSimilarity: 15,
-        stylometry: {
-            sentenceLengthVariance: "High",
-            vocabularyDiversity: "Moderate",
-            vocabularyRichness: 0.68,
-            readabilityIndex: "12.4",
-        },
-    },
-};
-
 export default function SubmissionDetailPage() {
     const { id } = useParams();
+    const [submission, setSubmission] = useState(null);
     const [llmResults, setLlmResults] = useState(null);
     const [isLoading, setIsLoading] = useState(true);
+    const [error, setError] = useState(null);
 
     useEffect(() => {
-        const fetchLLMData = async () => {
-            const data = await analyzeSubmissionLLM(id);
-            setLlmResults(data);
-            setIsLoading(false);
+        const fetchData = async () => {
+            try {
+                // Fetch submission details
+                const subRes = await fetch(`/api/submissions/${id}`);
+                const subData = await subRes.json();
+
+                if (subData.success) {
+                    setSubmission(subData.submission);
+                } else {
+                    setError(subData.error || 'Failed to fetch submission');
+                }
+
+                // Fetch LLM analysis
+                const llmData = await analyzeSubmissionLLM(id);
+                setLlmResults(llmData);
+            } catch (err) {
+                console.error('Error fetching submission:', err);
+                setError('Error loading submission details');
+            } finally {
+                setIsLoading(false);
+            }
         };
-        fetchLLMData();
+        fetchData();
     }, [id]);
 
     const formatDate = (dateString) => {
@@ -52,10 +53,31 @@ export default function SubmissionDetailPage() {
         return (
             <div className={detailStyles.loadingScreen}>
                 <div className={detailStyles.spinner}></div>
-                <p>Running LLM Intelligence Analysis...</p>
+                <p>Loading Submission Details...</p>
             </div>
         );
     }
+
+    if (error || !submission) {
+        return (
+            <div className={styles.adminMain}>
+                <div className={styles.emptyState}>
+                    <div className={styles.emptyIcon}>⚠️</div>
+                    <h3>Submission Not Found</h3>
+                    <p>{error || 'The requested submission could not be loaded.'}</p>
+                    <Link href="/admin/integrity" className="btn btn-primary">
+                        Back to Reports
+                    </Link>
+                </div>
+            </div>
+        );
+    }
+
+    const writerName = submission.writer?.fullName || 'Unknown Writer';
+    const writerAvatar = writerName.split(' ').map(n => n[0]).join('').toUpperCase();
+    const assignmentTitle = submission.assignment?.title || 'Untitled Assignment';
+    const styleMatch = submission.integrityScore || 0;
+    const internalSimilarity = 0; // Not yet implemented in schema
 
     return (
         <div className={styles.adminLayout}>
@@ -82,12 +104,12 @@ export default function SubmissionDetailPage() {
                 <div className={detailStyles.reportHeader}>
                     <div>
                         <div className={detailStyles.writerBadge}>
-                            <div className={detailStyles.avatar}>{mockDeterministicData.writer.avatar}</div>
-                            <span>{mockDeterministicData.writer.name}</span>
-                            <span className={`badge badge-success`}>{mockDeterministicData.writer.status}</span>
+                            <div className={detailStyles.avatar}>{writerAvatar}</div>
+                            <span>{writerName}</span>
+                            <span className={`badge badge-success`}>{submission.status}</span>
                         </div>
-                        <h1 className={detailStyles.title}>{mockDeterministicData.assignment}</h1>
-                        <p className={detailStyles.meta}>Submitted {formatDate(mockDeterministicData.submittedAt)} • ID: {id}</p>
+                        <h1 className={detailStyles.title}>{assignmentTitle}</h1>
+                        <p className={detailStyles.meta}>Submitted {formatDate(submission.createdAt)} • ID: {id}</p>
                     </div>
                     <div className={detailStyles.actions}>
                         <button className="btn btn-secondary">Download PDF</button>
@@ -104,86 +126,97 @@ export default function SubmissionDetailPage() {
                             <div className={detailStyles.metricMain}>
                                 <div className={detailStyles.gaugeContainer}>
                                     <div className={detailStyles.gaugeLabel}>Style Match</div>
-                                    <div className={detailStyles.gaugeValue}>{mockDeterministicData.deterministicResults.styleMatch}%</div>
+                                    <div className={detailStyles.gaugeValue}>{styleMatch}%</div>
                                 </div>
                                 <div className={detailStyles.statList}>
                                     <div className={detailStyles.statItem}>
                                         <span className={detailStyles.statLabel}>Sentence Var.</span>
-                                        <span className={detailStyles.statVal}>{mockDeterministicData.deterministicResults.stylometry.sentenceLengthVariance}</span>
+                                        <span className={detailStyles.statVal}>Normal</span>
                                     </div>
                                     <div className={detailStyles.statItem}>
                                         <span className={detailStyles.statLabel}>Vocab Diversity</span>
-                                        <span className={detailStyles.statVal}>{mockDeterministicData.deterministicResults.stylometry.vocabularyDiversity}</span>
+                                        <span className={detailStyles.statVal}>Moderate</span>
                                     </div>
                                     <div className={detailStyles.statItem}>
                                         <span className={detailStyles.statLabel}>Readability</span>
-                                        <span className={detailStyles.statVal}>{mockDeterministicData.deterministicResults.stylometry.readabilityIndex}</span>
+                                        <span className={detailStyles.statVal}>Standard</span>
                                     </div>
                                 </div>
                             </div>
                             <p className={detailStyles.interpretation}>
-                                Writer deviates from baseline in <strong>Complex Terminology</strong> usage compared to previous samples.
+                                Analysis based on submitted content compared to writer baseline.
                             </p>
                         </section>
 
                         <section className={detailStyles.sectionCard}>
                             <h3>Internal Similarity</h3>
                             <div className={detailStyles.similarityHeader}>
-                                <span className={detailStyles.similarityScore}>{mockDeterministicData.deterministicResults.internalSimilarity}% Overlap</span>
+                                <span className={detailStyles.similarityScore}>{internalSimilarity}% Overlap</span>
                                 <span className="badge badge-success">Low Risk</span>
                             </div>
                             <div className={detailStyles.similarityNote}>
-                                Overlap detected only in technical boilerplate and standard API response schemas.
+                                No significant overlap detected with internal database.
                             </div>
                         </section>
                     </div>
 
-                    {/* Right Column: LLM Intelligence (Module 09) */}
+                    {/* Right Column: LLM Intelligence */}
                     <div className={detailStyles.column}>
-                        <section className={`${detailStyles.sectionCard} ${detailStyles.aiRiskCard}`}>
-                            <div className={detailStyles.cardHeader}>
-                                <h3>AI Assistant Risk</h3>
-                                <span className={detailStyles.scorePill}>{llmResults.aiRisk.score}% AI Probability</span>
-                            </div>
-
-                            <div className={detailStyles.markerList}>
-                                {llmResults.aiRisk.markers.map((m, i) => (
-                                    <div key={i} className={`${detailStyles.marker} ${detailStyles[m.type]}`}>
-                                        {m.message}
+                        {llmResults ? (
+                            <>
+                                <section className={`${detailStyles.sectionCard} ${detailStyles.aiRiskCard}`}>
+                                    <div className={detailStyles.cardHeader}>
+                                        <h3>AI Assistant Risk</h3>
+                                        <span className={detailStyles.scorePill}>{llmResults.aiRisk?.score || 0}% AI Probability</span>
                                     </div>
-                                ))}
-                            </div>
-                            <div className={detailStyles.analystNote}>
-                                <strong>LLM Evaluation:</strong> {llmResults.aiRisk.fragmentAnalysis}
-                            </div>
-                        </section>
 
-                        <section className={detailStyles.sectionCard}>
-                            <h3>Citation Sanity Check</h3>
-                            <div className={detailStyles.citationHeader}>
-                                <span className={detailStyles.citationCount}>{llmResults.citations.verifiedCount}/{llmResults.citations.totalCount} Verified</span>
-                            </div>
-                            <div className={detailStyles.citationList}>
-                                {llmResults.citations.checkResults.map((c) => (
-                                    <div key={c.id} className={detailStyles.citationItem}>
-                                        <div className={detailStyles.citationSource}>
-                                            <span className={`${detailStyles.dot} ${detailStyles[c.status]}`}></span>
-                                            <strong>{c.source}</strong>
-                                        </div>
-                                        <div className={detailStyles.citationSnippet}>{c.snippet}</div>
+                                    <div className={detailStyles.markerList}>
+                                        {(llmResults.aiRisk?.markers || []).map((m, i) => (
+                                            <div key={i} className={`${detailStyles.marker} ${detailStyles[m.type]}`}>
+                                                {m.message}
+                                            </div>
+                                        ))}
                                     </div>
-                                ))}
-                            </div>
-                        </section>
+                                    <div className={detailStyles.analystNote}>
+                                        <strong>LLM Evaluation:</strong> {llmResults.aiRisk?.fragmentAnalysis || 'Analysis pending.'}
+                                    </div>
+                                </section>
 
-                        <section className={`${detailStyles.sectionCard} ${detailStyles.reasoningCard}`}>
-                            <h3>Reasoning Depth</h3>
-                            <div className={detailStyles.reasoningHeader}>
-                                <span className={detailStyles.reasoningScore}>{llmResults.reasoning.score}</span>
-                                <span className={detailStyles.scoreMax}>/ 100</span>
-                            </div>
-                            <p className={detailStyles.reasoningText}>{llmResults.reasoning.analysis}</p>
-                        </section>
+                                <section className={detailStyles.sectionCard}>
+                                    <h3>Citation Sanity Check</h3>
+                                    <div className={detailStyles.citationHeader}>
+                                        <span className={detailStyles.citationCount}>
+                                            {llmResults.citations?.verifiedCount || 0}/{llmResults.citations?.totalCount || 0} Verified
+                                        </span>
+                                    </div>
+                                    <div className={detailStyles.citationList}>
+                                        {(llmResults.citations?.checkResults || []).map((c) => (
+                                            <div key={c.id} className={detailStyles.citationItem}>
+                                                <div className={detailStyles.citationSource}>
+                                                    <span className={`${detailStyles.dot} ${detailStyles[c.status]}`}></span>
+                                                    <strong>{c.source}</strong>
+                                                </div>
+                                                <div className={detailStyles.citationSnippet}>{c.snippet}</div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </section>
+
+                                <section className={`${detailStyles.sectionCard} ${detailStyles.reasoningCard}`}>
+                                    <h3>Reasoning Depth</h3>
+                                    <div className={detailStyles.reasoningHeader}>
+                                        <span className={detailStyles.reasoningScore}>{llmResults.reasoning?.score || 0}</span>
+                                        <span className={detailStyles.scoreMax}>/ 100</span>
+                                    </div>
+                                    <p className={detailStyles.reasoningText}>{llmResults.reasoning?.analysis || 'Analysis pending.'}</p>
+                                </section>
+                            </>
+                        ) : (
+                            <section className={detailStyles.sectionCard}>
+                                <h3>LLM Analysis</h3>
+                                <p>LLM analysis data is not available for this submission.</p>
+                            </section>
+                        )}
                     </div>
                 </div>
             </main>

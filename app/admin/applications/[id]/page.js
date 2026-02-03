@@ -1,61 +1,79 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import styles from "../../admin.module.css";
 import detailStyles from "./detail.module.css";
 
-// Mock application data
-const mockApplication = {
-    id: "1",
-    name: "Sarah Johnson",
-    email: "sarah.j@example.com",
-    phone: "+1 555 234 5678",
-    education: "Master's Degree",
-    experience: "3-5 years",
-    timezone: "Eastern Time (UTC-5)",
-    workTypes: ["academic", "technical"],
-    grammarScore: 92,
-    policyScore: 88,
-    status: "pending",
-    appliedAt: "2026-02-01T14:30:00Z",
-    grammarAnswers: [
-        { question: "Subject-verb agreement", correct: true },
-        { question: "Data usage", correct: true },
-        { question: "Punctuation", correct: true },
-        { question: "Parallel structure", correct: true },
-        { question: "Collective nouns", correct: false },
-    ],
-    policyAnswers: [
-        { question: "AI policy understanding", correct: true },
-        { question: "Plagiarism consequences", correct: true },
-        { question: "Citation responsibility", correct: true },
-        { question: "Content reuse", correct: false },
-        { question: "Clarification process", correct: true },
-    ],
-    samples: [
-        { name: "Research_Paper_ML.docx", size: 245000, category: "academic" },
-        { name: "Technical_Guide_API.docx", size: 189000, category: "technical" },
-        { name: "Case_Study_Analysis.docx", size: 312000, category: "academic" },
-    ],
-};
-
 export default function ApplicationDetailPage() {
     const params = useParams();
-    const [application, setApplication] = useState(mockApplication);
+    const router = useRouter();
+    const [application, setApplication] = useState(null);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
     const [showApproveModal, setShowApproveModal] = useState(false);
     const [showRejectModal, setShowRejectModal] = useState(false);
     const [rejectReason, setRejectReason] = useState("");
+    const [processing, setProcessing] = useState(false);
 
-    const handleApprove = () => {
-        setApplication((prev) => ({ ...prev, status: "probation" }));
-        setShowApproveModal(false);
+    useEffect(() => {
+        const fetchApplication = async () => {
+            try {
+                const res = await fetch(`/api/applications/${params.id}`);
+                const data = await res.json();
+
+                if (data.success) {
+                    setApplication(data.application);
+                } else {
+                    setError(data.error || 'Failed to fetch application');
+                }
+            } catch (err) {
+                console.error('Error fetching application:', err);
+                setError('Error loading application details');
+            } finally {
+                setLoading(false);
+            }
+        };
+        fetchApplication();
+    }, [params.id]);
+
+    const handleApprove = async () => {
+        setProcessing(true);
+        try {
+            const res = await fetch(`/api/applications/${params.id}/approve`, {
+                method: 'POST'
+            });
+            const data = await res.json();
+            if (data.success) {
+                setApplication(prev => ({ ...prev, status: 'ACTIVE' }));
+                setShowApproveModal(false);
+            }
+        } catch (err) {
+            console.error('Error approving:', err);
+        } finally {
+            setProcessing(false);
+        }
     };
 
-    const handleReject = () => {
-        setApplication((prev) => ({ ...prev, status: "rejected" }));
-        setShowRejectModal(false);
+    const handleReject = async () => {
+        setProcessing(true);
+        try {
+            const res = await fetch(`/api/applications/${params.id}/reject`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ reason: rejectReason })
+            });
+            const data = await res.json();
+            if (data.success) {
+                setApplication(prev => ({ ...prev, status: 'REJECTED' }));
+                setShowRejectModal(false);
+            }
+        } catch (err) {
+            console.error('Error rejecting:', err);
+        } finally {
+            setProcessing(false);
+        }
     };
 
     const formatDate = (dateString) => {
@@ -72,9 +90,39 @@ export default function ApplicationDetailPage() {
         return (bytes / 1024).toFixed(1) + " KB";
     };
 
+    if (loading) {
+        return (
+            <div className={styles.adminMain}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '60px' }}>
+                    <div className="spinner"></div>
+                    <p style={{ marginLeft: '12px' }}>Loading application...</p>
+                </div>
+            </div>
+        );
+    }
+
+    if (error || !application) {
+        return (
+            <div className={styles.adminMain}>
+                <div className={styles.emptyState}>
+                    <div className={styles.emptyIcon}>⚠️</div>
+                    <h3>Application Not Found</h3>
+                    <p>{error || 'The requested application could not be loaded.'}</p>
+                    <Link href="/admin/applications" className="btn btn-primary">
+                        Back to Applications
+                    </Link>
+                </div>
+            </div>
+        );
+    }
+
+    const workTypes = application.workTypes ?
+        (typeof application.workTypes === 'string' ? JSON.parse(application.workTypes) : application.workTypes)
+        : [];
+
     return (
         <div className={styles.adminLayout}>
-            {/* Sidebar - same as dashboard */}
+            {/* Sidebar */}
             <aside className={styles.sidebar}>
                 <div className={styles.sidebarHeader}>
                     <div className={styles.sidebarLogo}>
@@ -129,30 +177,30 @@ export default function ApplicationDetailPage() {
                     <span>/</span>
                     <Link href="/admin/applications">Applications</Link>
                     <span>/</span>
-                    <span className={detailStyles.current}>{application.name}</span>
+                    <span className={detailStyles.current}>{application.fullName || 'Applicant'}</span>
                 </nav>
 
                 {/* Header */}
                 <div className={detailStyles.detailHeader}>
                     <div className={detailStyles.applicantHeader}>
                         <div className={detailStyles.largeAvatar}>
-                            {application.name.split(" ").map((n) => n[0]).join("")}
+                            {(application.fullName || 'U').split(" ").map((n) => n[0]).join("")}
                         </div>
                         <div className={detailStyles.applicantMeta}>
-                            <h1>{application.name}</h1>
+                            <h1>{application.fullName || 'Unknown Applicant'}</h1>
                             <p>{application.email}</p>
                             <div className={detailStyles.badges}>
-                                <span className={`${styles.statusBadge} ${styles[application.status]}`}>
+                                <span className={`${styles.statusBadge} ${styles[application.status?.toLowerCase()]}`}>
                                     {application.status}
                                 </span>
-                                {application.workTypes.map((type) => (
+                                {workTypes.map((type) => (
                                     <span key={type} className="badge badge-neutral">{type}</span>
                                 ))}
                             </div>
                         </div>
                     </div>
 
-                    {application.status === "pending" && (
+                    {application.status === "ONBOARDING" && (
                         <div className={detailStyles.headerActions}>
                             <button className="btn btn-secondary" onClick={() => setShowRejectModal(true)}>
                                 Reject Application
@@ -179,23 +227,23 @@ export default function ApplicationDetailPage() {
                                 </div>
                                 <div className={detailStyles.infoItem}>
                                     <span className={detailStyles.infoLabel}>Phone</span>
-                                    <span className={detailStyles.infoValue}>{application.phone}</span>
+                                    <span className={detailStyles.infoValue}>{application.phone || 'Not provided'}</span>
                                 </div>
                                 <div className={detailStyles.infoItem}>
                                     <span className={detailStyles.infoLabel}>Education</span>
-                                    <span className={detailStyles.infoValue}>{application.education}</span>
+                                    <span className={detailStyles.infoValue}>{application.education || 'Not provided'}</span>
                                 </div>
                                 <div className={detailStyles.infoItem}>
                                     <span className={detailStyles.infoLabel}>Experience</span>
-                                    <span className={detailStyles.infoValue}>{application.experience}</span>
+                                    <span className={detailStyles.infoValue}>{application.experience || 'Not provided'}</span>
                                 </div>
                                 <div className={detailStyles.infoItem}>
                                     <span className={detailStyles.infoLabel}>Timezone</span>
-                                    <span className={detailStyles.infoValue}>{application.timezone}</span>
+                                    <span className={detailStyles.infoValue}>{application.timezone || 'Not provided'}</span>
                                 </div>
                                 <div className={detailStyles.infoItem}>
                                     <span className={detailStyles.infoLabel}>Applied</span>
-                                    <span className={detailStyles.infoValue}>{formatDate(application.appliedAt)}</span>
+                                    <span className={detailStyles.infoValue}>{formatDate(application.createdAt)}</span>
                                 </div>
                             </div>
                         </div>
@@ -210,86 +258,42 @@ export default function ApplicationDetailPage() {
                             <div className={detailStyles.scoreSection}>
                                 <div className={detailStyles.scoreHeader}>
                                     <span>Grammar Test</span>
-                                    <span className={detailStyles.scoreValue}>{application.grammarScore}%</span>
+                                    <span className={detailStyles.scoreValue}>{application.grammarScore || 0}%</span>
                                 </div>
                                 <div className="progress">
                                     <div
-                                        className={`progress-bar ${application.grammarScore >= 80 ? "success" : ""}`}
-                                        style={{ width: `${application.grammarScore}%` }}
+                                        className={`progress-bar ${(application.grammarScore || 0) >= 80 ? "success" : ""}`}
+                                        style={{ width: `${application.grammarScore || 0}%` }}
                                     ></div>
-                                </div>
-                                <div className={detailStyles.answersList}>
-                                    {application.grammarAnswers.map((answer, idx) => (
-                                        <div key={idx} className={detailStyles.answerItem}>
-                                            <span className={answer.correct ? detailStyles.correct : detailStyles.incorrect}>
-                                                {answer.correct ? "✓" : "✗"}
-                                            </span>
-                                            <span>{answer.question}</span>
-                                        </div>
-                                    ))}
                                 </div>
                             </div>
 
                             <div className={detailStyles.scoreSection}>
                                 <div className={detailStyles.scoreHeader}>
                                     <span>Policy Test</span>
-                                    <span className={detailStyles.scoreValue}>{application.policyScore}%</span>
+                                    <span className={detailStyles.scoreValue}>{application.policyScore || 0}%</span>
                                 </div>
                                 <div className="progress">
                                     <div
-                                        className={`progress-bar ${application.policyScore >= 80 ? "success" : ""}`}
-                                        style={{ width: `${application.policyScore}%` }}
+                                        className={`progress-bar ${(application.policyScore || 0) >= 80 ? "success" : ""}`}
+                                        style={{ width: `${application.policyScore || 0}%` }}
                                     ></div>
-                                </div>
-                                <div className={detailStyles.answersList}>
-                                    {application.policyAnswers.map((answer, idx) => (
-                                        <div key={idx} className={detailStyles.answerItem}>
-                                            <span className={answer.correct ? detailStyles.correct : detailStyles.incorrect}>
-                                                {answer.correct ? "✓" : "✗"}
-                                            </span>
-                                            <span>{answer.question}</span>
-                                        </div>
-                                    ))}
                                 </div>
                             </div>
                         </div>
                     </div>
 
-                    {/* Samples */}
-                    <div className={detailStyles.card}>
-                        <div className={detailStyles.cardHeader}>
-                            <h3>Writing Samples</h3>
-                            <span className={detailStyles.sampleCount}>{application.samples.length} files</span>
-                        </div>
-                        <div className={detailStyles.cardBody}>
-                            <div className={detailStyles.samplesList}>
-                                {application.samples.map((sample, idx) => (
-                                    <div key={idx} className={detailStyles.sampleItem}>
-                                        <div className={detailStyles.sampleIcon}>
-                                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-                                                <polyline points="14 2 14 8 20 8"></polyline>
-                                            </svg>
-                                        </div>
-                                        <div className={detailStyles.sampleInfo}>
-                                            <div className={detailStyles.sampleName}>{sample.name}</div>
-                                            <div className={detailStyles.sampleMeta}>
-                                                <span className="badge badge-neutral">{sample.category}</span>
-                                                <span>{formatFileSize(sample.size)}</span>
-                                            </div>
-                                        </div>
-                                        <button className="btn btn-ghost btn-sm">
-                                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
-                                                <circle cx="12" cy="12" r="3"></circle>
-                                            </svg>
-                                            View
-                                        </button>
-                                    </div>
-                                ))}
+                    {/* Bio */}
+                    {application.bio && (
+                        <div className={detailStyles.card}>
+                            <div className={detailStyles.cardHeader}>
+                                <h3>Bio</h3>
+                            </div>
+                            <div className={detailStyles.cardBody}>
+                                <p>{application.bio}</p>
                             </div>
                         </div>
-                    </div>
+                    )}
                 </div>
             </main>
 
@@ -307,17 +311,17 @@ export default function ApplicationDetailPage() {
                             </button>
                         </div>
                         <div className={detailStyles.modalBody}>
-                            <p>Are you sure you want to approve <strong>{application.name}</strong>?</p>
+                            <p>Are you sure you want to approve <strong>{application.fullName}</strong>?</p>
                             <p className="text-secondary text-sm mt-2">
-                                The writer will be placed on <strong>probation</strong> status and will be able to receive assignments.
+                                The writer will be activated and will be able to receive assignments.
                             </p>
                         </div>
                         <div className={detailStyles.modalFooter}>
-                            <button className="btn btn-secondary" onClick={() => setShowApproveModal(false)}>
+                            <button className="btn btn-secondary" onClick={() => setShowApproveModal(false)} disabled={processing}>
                                 Cancel
                             </button>
-                            <button className="btn btn-success" onClick={handleApprove}>
-                                Approve Writer
+                            <button className="btn btn-success" onClick={handleApprove} disabled={processing}>
+                                {processing ? 'Processing...' : 'Approve Writer'}
                             </button>
                         </div>
                     </div>
@@ -338,7 +342,7 @@ export default function ApplicationDetailPage() {
                             </button>
                         </div>
                         <div className={detailStyles.modalBody}>
-                            <p>Are you sure you want to reject <strong>{application.name}</strong>'s application?</p>
+                            <p>Are you sure you want to reject <strong>{application.fullName}</strong>'s application?</p>
                             <div className="form-group mt-4">
                                 <label className="form-label">Reason for Rejection</label>
                                 <textarea
@@ -351,11 +355,11 @@ export default function ApplicationDetailPage() {
                             </div>
                         </div>
                         <div className={detailStyles.modalFooter}>
-                            <button className="btn btn-secondary" onClick={() => setShowRejectModal(false)}>
+                            <button className="btn btn-secondary" onClick={() => setShowRejectModal(false)} disabled={processing}>
                                 Cancel
                             </button>
-                            <button className="btn btn-danger" onClick={handleReject}>
-                                Reject Application
+                            <button className="btn btn-danger" onClick={handleReject} disabled={processing}>
+                                {processing ? 'Processing...' : 'Reject Application'}
                             </button>
                         </div>
                     </div>

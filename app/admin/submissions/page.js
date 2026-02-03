@@ -4,21 +4,6 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import styles from "../admin.module.css";
 
-// Mock submissions data (kept as fallback or type reference if needed, though API is used)
-const mockSubmissions = [
-    {
-        id: "s1",
-        title: "Comparison study of GPT-4 vs Claude 3",
-        writer: "Alice Smith",
-        submittedAt: "2026-02-02T16:20:00Z",
-        integrityScore: 98,
-        aiScore: 2,
-        plagiarismScore: 0,
-        status: "reviewed"
-    },
-    // ... (rest shortened for brevity, but real data comes from API)
-];
-
 export default function SubmissionsPage() {
     const [submissions, setSubmissions] = useState([]);
     const [searchQuery, setSearchQuery] = useState("");
