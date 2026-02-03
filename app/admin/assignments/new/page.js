@@ -8,7 +8,22 @@ import formStyles from "./form.module.css";
 
 // Mock writers list
 export default function NewAssignmentPage() {
+    const router = useRouter();
     const [writers, setWriters] = useState([]);
+    const [searchTerm, setSearchTerm] = useState("");
+    const [isSearchOpen, setIsSearchOpen] = useState(false);
+    const [isSubmitting, setIsSubmitting] = useState(false);
+    const [errors, setErrors] = useState({});
+    const [formData, setFormData] = useState({
+        title: "",
+        writerId: "",
+        category: "",
+        brief: "",
+        wordCount: "",
+        citationStyle: "",
+        deadline: "",
+        priority: "normal"
+    });
 
     useEffect(() => {
         const fetchWriters = async () => {
