@@ -6,6 +6,7 @@ import styles from "./admin.module.css";
 
 export default function AdminDashboard() {
     const [applications, setApplications] = useState([]);
+    const [alerts, setAlerts] = useState([]);
     const [stats, setStats] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
@@ -38,14 +39,26 @@ export default function AdminDashboard() {
         } catch (err) {
             console.error('Error fetching dashboard data:', err);
             setError('Failed to load dashboard');
-        } finally {
             setLoading(false);
+        }
+    }, []);
+
+    const fetchAlerts = useCallback(async () => {
+        try {
+            const res = await fetch('/api/admin/alerts');
+            const data = await res.json();
+            if (data.success) {
+                setAlerts(data.alerts);
+            }
+        } catch (err) {
+            console.error('Error fetching alerts:', err);
         }
     }, []);
 
     useEffect(() => {
         fetchData();
-    }, [fetchData]);
+        fetchAlerts();
+    }, [fetchData, fetchAlerts]);
 
     // Filter applications
     const filteredApplications = applications.filter((app) => {
@@ -182,46 +195,33 @@ export default function AdminDashboard() {
                     </div>
                 </div>
 
-                {/* System Activity / Alerts */}
                 <div className={styles.dashboardCard}>
                     <div className={styles.cardHeader}>
                         <h3>Integrity Alerts</h3>
-                        <span className="badge badge-error">3 Critical</span>
+                        {alerts.length > 0 && <span className="badge badge-error">{alerts.length} Critical</span>}
                     </div>
 
                     <div className={styles.activityList}>
-                        <div className={styles.activityItem}>
-                            <div className={styles.activityIcon}>⚠️</div>
-                            <div className={styles.activityContent}>
-                                <div className={styles.activityTitle}>High AI Content Detected</div>
-                                <div className={styles.activityMeta}>Submission #4291 • Writer: Sarah J.</div>
+                        {alerts.length === 0 ? (
+                            <div className={styles.emptyState} style={{ padding: '20px', textAlign: 'center', color: 'var(--text-secondary)' }}>
+                                No critical alerts at this time.
                             </div>
-                            <div className={styles.activityAction}>
-                                <button className="btn btn-sm btn-outline">Review</button>
-                            </div>
-                        </div>
-
-                        <div className={styles.activityItem}>
-                            <div className={styles.activityIcon}>🔄</div>
-                            <div className={styles.activityContent}>
-                                <div className={styles.activityTitle}>Multiple Re-submissions</div>
-                                <div className={styles.activityMeta}>Assignment #8821 • Writer: Mike T.</div>
-                            </div>
-                            <div className={styles.activityAction}>
-                                <button className="btn btn-sm btn-outline">Check</button>
-                            </div>
-                        </div>
-
-                        <div className={styles.activityItem}>
-                            <div className={styles.activityIcon}>🛑</div>
-                            <div className={styles.activityContent}>
-                                <div className={styles.activityTitle}>Plagiarism Threshold Exceeded</div>
-                                <div className={styles.activityMeta}>Submission #4211 • Writer: Alex P.</div>
-                            </div>
-                            <div className={styles.activityAction}>
-                                <button className="btn btn-sm btn-outline">Review</button>
-                            </div>
-                        </div>
+                        ) : (
+                            alerts.map((alert) => (
+                                <div key={alert.id} className={styles.activityItem}>
+                                    <div className={styles.activityIcon}>{alert.icon}</div>
+                                    <div className={styles.activityContent}>
+                                        <div className={styles.activityTitle}>{alert.title}</div>
+                                        <div className={styles.activityMeta}>{alert.message}</div>
+                                    </div>
+                                    <div className={styles.activityAction}>
+                                        <Link href={alert.link} className="btn btn-sm btn-outline">
+                                            {alert.actionLabel}
+                                        </Link>
+                                    </div>
+                                </div>
+                            ))
+                        )}
                     </div>
                 </div>
             </div>

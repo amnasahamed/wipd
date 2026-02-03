@@ -1,88 +1,37 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import styles from "../admin.module.css";
 import reportStyles from "./report.module.css";
 
-// Mock submission data with integrity analysis
-const mockSubmissions = [
-    {
-        id: "1",
-        writer: { name: "Sarah Johnson", avatar: "SJ" },
-        assignment: "Research Paper on Machine Learning Algorithms",
-        category: "academic",
-        submittedAt: "2026-02-02T15:30:00Z",
-        status: "pending_review",
-        integrityReport: {
-            overallRisk: "low",
-            styleMatch: 94,
-            internalSimilarity: 8,
-            aiRiskScore: 12,
-            citationScore: 96,
-            wordCount: 3245,
-            signals: [
-                { type: "positive", message: "Writing style matches baseline (94% similarity)" },
-                { type: "positive", message: "No significant AI-generated content detected" },
-                { type: "neutral", message: "8% overlap with internal database" },
-                { type: "positive", message: "All citations verified and properly formatted" },
-            ],
-        },
-    },
-    {
-        id: "2",
-        writer: { name: "Michael Chen", avatar: "MC" },
-        assignment: "Technical Documentation for Payment API",
-        category: "technical",
-        submittedAt: "2026-02-02T14:00:00Z",
-        status: "pending_review",
-        integrityReport: {
-            overallRisk: "medium",
-            styleMatch: 72,
-            internalSimilarity: 15,
-            aiRiskScore: 35,
-            citationScore: 88,
-            wordCount: 2100,
-            signals: [
-                { type: "warning", message: "Style deviation detected (72% match)" },
-                { type: "warning", message: "Moderate AI-assistance risk (35%)" },
-                { type: "neutral", message: "15% overlap with internal database" },
-                { type: "positive", message: "Citations properly formatted" },
-            ],
-        },
-    },
-    {
-        id: "3",
-        writer: { name: "Emily Rodriguez", avatar: "ER" },
-        assignment: "Case Study on Fintech Adoption",
-        category: "academic",
-        submittedAt: "2026-02-02T10:15:00Z",
-        status: "pending_review",
-        integrityReport: {
-            overallRisk: "high",
-            styleMatch: 45,
-            internalSimilarity: 42,
-            aiRiskScore: 78,
-            citationScore: 52,
-            wordCount: 4200,
-            signals: [
-                { type: "danger", message: "Significant style deviation (45% match)" },
-                { type: "danger", message: "High AI-assistance risk detected (78%)" },
-                { type: "danger", message: "42% overlap with internal submissions" },
-                { type: "warning", message: "Some citations could not be verified" },
-            ],
-        },
-    },
-];
-
 export default function IntegrityReportsPage() {
-    const [submissions] = useState(mockSubmissions);
+    const [submissions, setSubmissions] = useState([]);
     const [selectedRisk, setSelectedRisk] = useState("all");
+    const [loading, setLoading] = useState(true);
 
-    const filteredSubmissions = submissions.filter((s) => {
-        if (selectedRisk === "all") return true;
-        return s.integrityReport.overallRisk === selectedRisk;
-    });
+    const fetchReports = useCallback(async () => {
+        setLoading(true);
+        try {
+            const url = selectedRisk === 'all'
+                ? '/api/admin/integrity'
+                : `/api/admin/integrity?risk=${selectedRisk}`;
+
+            const res = await fetch(url);
+            const data = await res.json();
+            if (data.success) {
+                setSubmissions(data.reports);
+            }
+        } catch (error) {
+            console.error("Failed to fetch reports", error);
+        } finally {
+            setLoading(false);
+        }
+    }, [selectedRisk]);
+
+    useEffect(() => {
+        fetchReports();
+    }, [fetchReports]);
 
     const formatDate = (dateString) => {
         return new Date(dateString).toLocaleDateString("en-US", {
@@ -91,15 +40,6 @@ export default function IntegrityReportsPage() {
             hour: "2-digit",
             minute: "2-digit",
         });
-    };
-
-    const getRiskColor = (risk) => {
-        switch (risk) {
-            case "low": return "success";
-            case "medium": return "warning";
-            case "high": return "danger";
-            default: return "neutral";
-        }
     };
 
     const getScoreColor = (score, inverse = false) => {
@@ -133,123 +73,137 @@ export default function IntegrityReportsPage() {
                         <option value="medium">Medium Risk</option>
                         <option value="low">Low Risk</option>
                     </select>
+                    <button onClick={fetchReports} className="btn btn-ghost">Refresh</button>
                 </div>
             </div>
 
-            {/* Submissions List */}
-            <div className={reportStyles.submissionsList}>
-                {filteredSubmissions.map((submission) => (
-                    <div key={submission.id} className={reportStyles.submissionCard}>
-                        <div className={reportStyles.cardHeader}>
-                            <div className={reportStyles.writerInfo}>
-                                <div className={reportStyles.writerAvatar}>{submission.writer.avatar}</div>
-                                <div>
-                                    <div className={reportStyles.writerName}>{submission.writer.name}</div>
-                                    <div className={reportStyles.submissionMeta}>
-                                        <span className={`badge badge-${submission.category === "academic" ? "primary" : "secondary"}`}>
-                                            {submission.category}
+            {loading ? (
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '40px' }}>
+                    <div className="spinner"></div>
+                    <p style={{ marginLeft: '12px' }}>Loading reports...</p>
+                </div>
+            ) : submissions.length === 0 ? (
+                <div className={styles.emptyState}>
+                    <div className={styles.emptyIcon}>✓</div>
+                    <h3>No reports found</h3>
+                    <p>There are no submissions matching the selected filters.</p>
+                </div>
+            ) : (
+                /* Submissions List */
+                <div className={reportStyles.submissionsList}>
+                    {submissions.map((submission) => (
+                        <div key={submission.id} className={reportStyles.submissionCard}>
+                            <div className={reportStyles.cardHeader}>
+                                <div className={reportStyles.writerInfo}>
+                                    <div className={reportStyles.writerAvatar}>{submission.writer.avatar}</div>
+                                    <div>
+                                        <div className={reportStyles.writerName}>{submission.writer.name}</div>
+                                        <div className={reportStyles.submissionMeta}>
+                                            <span className={`badge badge-${submission.category === "academic" ? "primary" : "secondary"}`}>
+                                                {submission.category}
+                                            </span>
+                                            <span>{formatDate(submission.submittedAt)}</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div className={`${reportStyles.riskBadge} ${reportStyles[submission.integrityReport.overallRisk]}`}>
+                                    {submission.integrityReport.overallRisk.toUpperCase()} RISK
+                                </div>
+                            </div>
+
+                            <h3 className={reportStyles.assignmentTitle}>{submission.assignment}</h3>
+
+                            {/* Metrics Grid */}
+                            <div className={reportStyles.metricsGrid}>
+                                <div className={reportStyles.metric}>
+                                    <div className={reportStyles.metricHeader}>
+                                        <span>Style Match</span>
+                                        <span className={`${reportStyles.metricValue} ${reportStyles[getScoreColor(submission.integrityReport.styleMatch)]}`}>
+                                            {submission.integrityReport.styleMatch}%
                                         </span>
-                                        <span>{formatDate(submission.submittedAt)}</span>
+                                    </div>
+                                    <div className={reportStyles.metricBar}>
+                                        <div
+                                            className={`${reportStyles.metricFill} ${reportStyles[getScoreColor(submission.integrityReport.styleMatch)]}`}
+                                            style={{ width: `${submission.integrityReport.styleMatch}%` }}
+                                        ></div>
+                                    </div>
+                                </div>
+
+                                <div className={reportStyles.metric}>
+                                    <div className={reportStyles.metricHeader}>
+                                        <span>AI Risk</span>
+                                        <span className={`${reportStyles.metricValue} ${reportStyles[getScoreColor(submission.integrityReport.aiRiskScore, true)]}`}>
+                                            {submission.integrityReport.aiRiskScore}%
+                                        </span>
+                                    </div>
+                                    <div className={reportStyles.metricBar}>
+                                        <div
+                                            className={`${reportStyles.metricFill} ${reportStyles[getScoreColor(submission.integrityReport.aiRiskScore, true)]}`}
+                                            style={{ width: `${submission.integrityReport.aiRiskScore}%` }}
+                                        ></div>
+                                    </div>
+                                </div>
+
+                                <div className={reportStyles.metric}>
+                                    <div className={reportStyles.metricHeader}>
+                                        <span>Internal Similarity</span>
+                                        <span className={`${reportStyles.metricValue} ${reportStyles[getScoreColor(submission.integrityReport.internalSimilarity, true)]}`}>
+                                            {submission.integrityReport.internalSimilarity}%
+                                        </span>
+                                    </div>
+                                    <div className={reportStyles.metricBar}>
+                                        <div
+                                            className={`${reportStyles.metricFill} ${reportStyles[getScoreColor(submission.integrityReport.internalSimilarity, true)]}`}
+                                            style={{ width: `${submission.integrityReport.internalSimilarity}%` }}
+                                        ></div>
+                                    </div>
+                                </div>
+
+                                <div className={reportStyles.metric}>
+                                    <div className={reportStyles.metricHeader}>
+                                        <span>Citation Score</span>
+                                        <span className={`${reportStyles.metricValue} ${reportStyles[getScoreColor(submission.integrityReport.citationScore)]}`}>
+                                            {submission.integrityReport.citationScore}%
+                                        </span>
+                                    </div>
+                                    <div className={reportStyles.metricBar}>
+                                        <div
+                                            className={`${reportStyles.metricFill} ${reportStyles[getScoreColor(submission.integrityReport.citationScore)]}`}
+                                            style={{ width: `${submission.integrityReport.citationScore}%` }}
+                                        ></div>
                                     </div>
                                 </div>
                             </div>
-                            <div className={`${reportStyles.riskBadge} ${reportStyles[submission.integrityReport.overallRisk]}`}>
-                                {submission.integrityReport.overallRisk.toUpperCase()} RISK
-                            </div>
-                        </div>
 
-                        <h3 className={reportStyles.assignmentTitle}>{submission.assignment}</h3>
-
-                        {/* Metrics Grid */}
-                        <div className={reportStyles.metricsGrid}>
-                            <div className={reportStyles.metric}>
-                                <div className={reportStyles.metricHeader}>
-                                    <span>Style Match</span>
-                                    <span className={`${reportStyles.metricValue} ${reportStyles[getScoreColor(submission.integrityReport.styleMatch)]}`}>
-                                        {submission.integrityReport.styleMatch}%
-                                    </span>
-                                </div>
-                                <div className={reportStyles.metricBar}>
-                                    <div
-                                        className={`${reportStyles.metricFill} ${reportStyles[getScoreColor(submission.integrityReport.styleMatch)]}`}
-                                        style={{ width: `${submission.integrityReport.styleMatch}%` }}
-                                    ></div>
-                                </div>
+                            {/* Signals */}
+                            <div className={reportStyles.signalsList}>
+                                {submission.integrityReport.signals.map((signal, idx) => (
+                                    <div key={idx} className={`${reportStyles.signal} ${reportStyles[signal.type]}`}>
+                                        {signal.type === "positive" && "✓"}
+                                        {signal.type === "neutral" && "○"}
+                                        {signal.type === "warning" && "⚠"}
+                                        {signal.type === "danger" && "✗"}
+                                        <span>{signal.message}</span>
+                                    </div>
+                                ))}
                             </div>
 
-                            <div className={reportStyles.metric}>
-                                <div className={reportStyles.metricHeader}>
-                                    <span>AI Risk</span>
-                                    <span className={`${reportStyles.metricValue} ${reportStyles[getScoreColor(submission.integrityReport.aiRiskScore, true)]}`}>
-                                        {submission.integrityReport.aiRiskScore}%
-                                    </span>
-                                </div>
-                                <div className={reportStyles.metricBar}>
-                                    <div
-                                        className={`${reportStyles.metricFill} ${reportStyles[getScoreColor(submission.integrityReport.aiRiskScore, true)]}`}
-                                        style={{ width: `${submission.integrityReport.aiRiskScore}%` }}
-                                    ></div>
-                                </div>
-                            </div>
-
-                            <div className={reportStyles.metric}>
-                                <div className={reportStyles.metricHeader}>
-                                    <span>Internal Similarity</span>
-                                    <span className={`${reportStyles.metricValue} ${reportStyles[getScoreColor(submission.integrityReport.internalSimilarity, true)]}`}>
-                                        {submission.integrityReport.internalSimilarity}%
-                                    </span>
-                                </div>
-                                <div className={reportStyles.metricBar}>
-                                    <div
-                                        className={`${reportStyles.metricFill} ${reportStyles[getScoreColor(submission.integrityReport.internalSimilarity, true)]}`}
-                                        style={{ width: `${submission.integrityReport.internalSimilarity}%` }}
-                                    ></div>
-                                </div>
-                            </div>
-
-                            <div className={reportStyles.metric}>
-                                <div className={reportStyles.metricHeader}>
-                                    <span>Citation Score</span>
-                                    <span className={`${reportStyles.metricValue} ${reportStyles[getScoreColor(submission.integrityReport.citationScore)]}`}>
-                                        {submission.integrityReport.citationScore}%
-                                    </span>
-                                </div>
-                                <div className={reportStyles.metricBar}>
-                                    <div
-                                        className={`${reportStyles.metricFill} ${reportStyles[getScoreColor(submission.integrityReport.citationScore)]}`}
-                                        style={{ width: `${submission.integrityReport.citationScore}%` }}
-                                    ></div>
+                            {/* Actions */}
+                            <div className={reportStyles.cardActions}>
+                                <Link href={`/admin/submissions/${submission.id}`} className="btn btn-secondary btn-sm">
+                                    View Full Report
+                                </Link>
+                                <div className={reportStyles.actionGroup}>
+                                    <button className="btn btn-success btn-sm">Approve</button>
+                                    <button className="btn btn-warning btn-sm">Request Revision</button>
+                                    <button className="btn btn-danger btn-sm">Reject</button>
                                 </div>
                             </div>
                         </div>
-
-                        {/* Signals */}
-                        <div className={reportStyles.signalsList}>
-                            {submission.integrityReport.signals.map((signal, idx) => (
-                                <div key={idx} className={`${reportStyles.signal} ${reportStyles[signal.type]}`}>
-                                    {signal.type === "positive" && "✓"}
-                                    {signal.type === "neutral" && "○"}
-                                    {signal.type === "warning" && "⚠"}
-                                    {signal.type === "danger" && "✗"}
-                                    <span>{signal.message}</span>
-                                </div>
-                            ))}
-                        </div>
-
-                        {/* Actions */}
-                        <div className={reportStyles.cardActions}>
-                            <Link href={`/admin/submissions/${submission.id}`} className="btn btn-secondary btn-sm">
-                                View Full Report
-                            </Link>
-                            <div className={reportStyles.actionGroup}>
-                                <button className="btn btn-success btn-sm">Approve</button>
-                                <button className="btn btn-warning btn-sm">Request Revision</button>
-                                <button className="btn btn-danger btn-sm">Reject</button>
-                            </div>
-                        </div>
-                    </div>
-                ))}
-            </div>
+                    ))}
+                </div>
+            )}
         </main>
     );
 }
