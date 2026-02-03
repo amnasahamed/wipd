@@ -40,6 +40,7 @@ model Profile {
   updatedAt    DateTime @updatedAt
   assignments  Assignment[]
   submissions  Submission[]
+  baselineMetrics String? // JSON string of style fingerprint
 }
 
 model Assignment {
@@ -89,4 +90,12 @@ model AuditLog {
   action      String
   details     String?  // JSON string
   createdAt   DateTime @default(now())
+}
+
+model SystemConfig {
+  id        String   @id @default(cuid())
+  key       String   @unique // e.g., 'llm_provider', 'openai_api_key'
+  value     String   // The actual value
+  isSecret  Boolean  @default(false) // To mask in UI
+  updatedAt DateTime @updatedAt
 }

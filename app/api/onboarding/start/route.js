@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
+import bcrypt from 'bcryptjs';
 
 export async function POST(request) {
     try {
@@ -16,11 +17,15 @@ export async function POST(request) {
         });
 
         if (!user) {
+            // Hash the default password
+            // In a real flow, a temporary password or invite link should be used.
+            const hashedPassword = await bcrypt.hash('password123', 10);
+
             // Create user and profile
             user = await prisma.user.create({
                 data: {
                     email,
-                    password: 'password123', // Mock password for now
+                    password: hashedPassword,
                     role,
                     profile: {
                         create: {
@@ -28,7 +33,8 @@ export async function POST(request) {
                             status: 'ONBOARDING',
                             education: body.education,
                             experience: body.experience,
-                            bio: body.workTypes ? body.workTypes.join(', ') : '',
+                            bio: body.bio || '',
+                            workTypes: body.workTypes ? JSON.stringify(body.workTypes) : '[]',
                             phone: body.phone,
                             timezone: body.timezone
                         }
@@ -62,7 +68,8 @@ export async function POST(request) {
                                 status: 'ONBOARDING',
                                 education: body.education,
                                 experience: body.experience,
-                                bio: body.workTypes ? body.workTypes.join(', ') : '',
+                                bio: body.bio || '',
+                                workTypes: body.workTypes ? JSON.stringify(body.workTypes) : '[]',
                                 phone: body.phone,
                                 timezone: body.timezone
                             },
@@ -70,7 +77,8 @@ export async function POST(request) {
                                 fullName: body.name || '',
                                 education: body.education,
                                 experience: body.experience,
-                                bio: body.workTypes ? body.workTypes.join(', ') : '',
+                                bio: body.bio || '',
+                                workTypes: body.workTypes ? JSON.stringify(body.workTypes) : '[]',
                                 phone: body.phone,
                                 timezone: body.timezone
                             }
