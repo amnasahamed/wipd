@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 
+export const dynamic = 'force-dynamic';
+
 export async function GET() {
     try {
         const writers = await prisma.user.findMany({
@@ -26,9 +28,9 @@ export async function GET() {
 
             return {
                 id: w.id,
-                name: w.profile?.fullName,
+                name: w.profile?.fullName || 'Unknown Writer',
                 email: w.email,
-                status: w.profile?.status?.toLowerCase(),
+                status: w.profile?.status?.toLowerCase() || 'probation', // Default to probation if missing
                 joinedAt: w.createdAt,
                 stats: {
                     totalSubmissions: subs.length,

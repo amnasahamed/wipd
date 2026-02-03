@@ -1,6 +1,9 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 
+export const dynamic = 'force-dynamic';
+
+
 export async function GET() {
     try {
         const allWriters = await prisma.user.findMany({
@@ -12,7 +15,9 @@ export async function GET() {
         });
 
         // Filter in memory to be safe against potential Prisma relation filter edge cases
-        const applications = allWriters.filter(app => app.profile?.status === 'ONBOARDING');
+        // Include 'ONBOARDING' status OR missing profiles (to catch registration errors)
+        const applications = allWriters.filter(app => !app.profile || app.profile?.status === 'ONBOARDING');
+
 
         return NextResponse.json({
             success: true,
