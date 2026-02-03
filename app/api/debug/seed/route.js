@@ -1,22 +1,23 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
+import bcrypt from 'bcryptjs';
 
 export async function POST() {
     try {
-        // Clear existing data (CAUTION: Dev only)
-        // await prisma.auditLog.deleteMany();
-        // await prisma.submission.deleteMany();
-        // await prisma.assignment.deleteMany();
-        // await prisma.profile.deleteMany();
-        // await prisma.user.deleteMany();
+        // Hash passwords
+        const adminPassword = await bcrypt.hash('Amnas@1997', 10);
+        const writerPassword = await bcrypt.hash('password123', 10);
 
         // Seed Admin
         const admin = await prisma.user.upsert({
-            where: { email: 'admin@system.com' },
-            update: {},
+            where: { email: 'muhsinaov0@gmail.com' },
+            update: {
+                password: adminPassword,
+                role: 'ADMIN'
+            },
             create: {
-                email: 'admin@system.com',
-                password: 'admin',
+                email: 'muhsinaov0@gmail.com',
+                password: adminPassword,
                 role: 'ADMIN'
             }
         });
@@ -34,7 +35,7 @@ export async function POST() {
                 update: {},
                 create: {
                     email: data.email,
-                    password: 'password123',
+                    password: writerPassword,
                     role: 'WRITER',
                     profile: {
                         create: {
@@ -48,9 +49,10 @@ export async function POST() {
             });
         }
 
-        return NextResponse.json({ success: true, message: 'Database seeded successfully' });
+        return NextResponse.json({ success: true, message: 'Database seeded successfully', admin: { id: admin.id, email: admin.email } });
     } catch (error) {
         console.error('Seed error:', error);
-        return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
+        return NextResponse.json({ error: 'Internal Server Error', details: error.message }, { status: 500 });
     }
 }
+
