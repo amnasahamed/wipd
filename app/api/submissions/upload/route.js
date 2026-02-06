@@ -29,7 +29,12 @@ export async function POST(request) {
         try {
             text = await extractTextFromFile(file);
         } catch (e) {
-            console.warn("Extraction failed, using empty text", e);
+            console.error("Extraction failed:", e);
+            return NextResponse.json({ error: e.message || "File extraction failed" }, { status: 400 });
+        }
+
+        if (!text || text.trim().length === 0) {
+            return NextResponse.json({ error: "Extracted text is empty" }, { status: 400 });
         }
 
         // 2. Fetch Writer Profile & Baseline
