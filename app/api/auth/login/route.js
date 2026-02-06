@@ -9,7 +9,7 @@ export async function POST(request) {
         const { email, password } = body;
 
         if (!email || !password) {
-            return NextResponse.json({ error: 'Email and password are required' }, { status: 400 });
+            return NextResponse.json({ success: false, error: 'Email and password are required' }, { status: 400 });
         }
 
         // Find user by email
@@ -19,14 +19,14 @@ export async function POST(request) {
         });
 
         if (!user) {
-            return NextResponse.json({ error: 'Invalid credentials' }, { status: 401 });
+            return NextResponse.json({ success: false, error: 'Invalid email or password' }, { status: 401 });
         }
 
         // Verify password
         const isValid = await bcrypt.compare(password, user.password);
 
         if (!isValid) {
-            return NextResponse.json({ error: 'Invalid credentials' }, { status: 401 });
+            return NextResponse.json({ success: false, error: 'Invalid email or password' }, { status: 401 });
         }
 
         // Set HttpOnly cookie for session
@@ -37,8 +37,8 @@ export async function POST(request) {
             httpOnly: true,
             path: '/',
             maxAge: 60 * 60 * 24 * 7, // 1 week
-            sameSite: 'strict'
-            // secure: process.env.NODE_ENV === 'production'
+            sameSite: 'strict',
+            secure: process.env.NODE_ENV === 'production'
         });
 
         return NextResponse.json({
@@ -53,6 +53,6 @@ export async function POST(request) {
 
     } catch (error) {
         console.error('Login error:', error);
-        return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
+        return NextResponse.json({ success: false, error: 'Internal Server Error' }, { status: 500 });
     }
 }

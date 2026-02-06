@@ -2,224 +2,165 @@
 
 import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
+import WriterLayout from "@/components/WriterLayout";
+import { useToast } from "@/components/Toast";
+import { LoadingSpinner, SkeletonCard, SkeletonStats } from "@/components/LoadingState";
+import EmptyState from "@/components/EmptyState";
+import { formatDeadline, getStatusConfig, getAssignmentStatusKey } from "@/lib/hooks/useApi";
 import styles from "./dashboard.module.css";
 
+function StatIcon({ icon }) {
+    if (icon === "clipboard") {
+        return (
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M9 12h3.75M9 15h3.75M9 18h3.75m3 .75H18a2.25 2.25 0 0 0 2.25-2.25V6.108c0-1.135-.845-2.098-1.976-2.192a48.424 48.424 0 0 0-1.123-.08m0 0V4.5A2.25 2.25 0 0 0 15 2.25H9A2.25 2.25 0 0 0 6.75 4.5v.108c-.375.024-.75.05-1.124.08C4.095 4.782 3.25 5.745 3.25 6.88V18a2.25 2.25 0 0 0 2.25 2.25h3" />
+            </svg>
+        );
+    }
+    if (icon === "check") {
+        return (
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+            </svg>
+        );
+    }
+    if (icon === "star") {
+        return (
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M11.48 3.499a.562.562 0 0 1 1.04 0l2.125 5.111a.563.563 0 0 0 .475.345l5.518.442c.499.04.701.663.321.988l-4.204 3.602a.563.563 0 0 0-.182.557l1.285 5.385a.562.562 0 0 1-.84.61l-4.725-2.885a.563.563 0 0 0-.586 0L6.982 20.54a.562.562 0 0 1-.84-.61l1.285-5.386a.562.562 0 0 0-.182-.557l-4.204-3.602a.563.563 0 0 1 .321-.988l5.518-.442a.563.563 0 0 0 .475-.345L11.48 3.5Z" />
+            </svg>
+        );
+    }
+    if (icon === "heart") {
+        return (
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12Z" />
+            </svg>
+        );
+    }
+    return null;
+}
+
 export default function WriterDashboard() {
+    return (
+        <WriterLayout activeNav="dashboard">
+            {({ user, loading: userLoading }) => (
+                <DashboardContent user={user} userLoading={userLoading} />
+            )}
+        </WriterLayout>
+    );
+}
+
+function DashboardContent({ user, userLoading }) {
+    const toast = useToast();
     const [assignments, setAssignments] = useState([]);
-    const [user, setUser] = useState(null);
     const [stats, setStats] = useState([
         { label: "Active Assignments", value: 0, icon: "clipboard" },
         { label: "Completed", value: 0, icon: "check" },
         { label: "Success Rate", value: "0%", icon: "star" },
-        { label: "Avg. Grammarly", value: "0", icon: "heart" },
+        { label: "Grammar Score", value: "0", icon: "heart" },
     ]);
     const [loading, setLoading] = useState(true);
-    const [error, setError] = useState(null);
     const [showNotifications, setShowNotifications] = useState(false);
     const [notifications, setNotifications] = useState([
         { id: 1, title: "Welcome", message: "Welcome to the new WriterHub dashboard!", time: "Recently", unread: true },
     ]);
 
-    const fetchData = useCallback(async () => {
+    const fetchAssignments = useCallback(async (writerId) => {
         setLoading(true);
         try {
-            // Get current user
-            const userRes = await fetch('/api/me');
-            const userData = await userRes.json();
+            const res = await fetch(`/api/assignments/writer?writerId=${writerId}`);
+            const data = await res.json();
 
-            if (userData.authenticated && userData.user) {
-                const currentUser = userData.user;
-                setUser({
-                    id: currentUser.id,
-                    email: currentUser.email,
-                    role: currentUser.role,
-                    fullName: currentUser.profile?.fullName || 'Writer',
-                    profile: currentUser.profile
-                });
+            if (data.success) {
+                const allAssignments = data.assignments;
+                setAssignments(allAssignments.slice(0, 5));
 
-                // Get assignments using user ID
-                const assignmentsRes = await fetch(`/api/assignments/writer?writerId=${currentUser.id}`);
-                const assignmentsData = await assignmentsRes.json();
+                const activeCount = allAssignments.filter(a =>
+                    ["PENDING", "IN_PROGRESS", "ASSIGNED"].includes(a.status)
+                ).length;
+                const completedCount = allAssignments.filter(a => a.status === "COMPLETED").length;
+                const grammarScore = user?.profile?.grammarScore || 0;
 
-                if (assignmentsData.success) {
-                    const allAssignments = assignmentsData.assignments;
-                    setAssignments(allAssignments.slice(0, 5)); // Recent 5
-
-                    // Calculate stats
-                    const activeCount = allAssignments.filter(a => ['PENDING', 'IN_PROGRESS', 'ASSIGNED'].includes(a.status)).length;
-                    const completedCount = allAssignments.filter(a => a.status === 'COMPLETED').length;
-                    const grammarScore = currentUser.profile?.grammarScore || 0;
-
-                    setStats([
-                        { label: "Active Assignments", value: activeCount, icon: "clipboard" },
-                        { label: "Completed", value: completedCount, icon: "check" },
-                        { label: "Success Rate", value: completedCount > 0 ? "100%" : "N/A", icon: "star" },
-                        { label: "Grammar Score", value: `${grammarScore}%`, icon: "heart" },
-                    ]);
-                }
-            } else {
-                // Not authenticated, redirect to login
-                window.location.href = '/login';
+                setStats([
+                    { label: "Active Assignments", value: activeCount, icon: "clipboard" },
+                    { label: "Completed", value: completedCount, icon: "check" },
+                    { label: "Success Rate", value: completedCount > 0 ? "100%" : "N/A", icon: "star" },
+                    { label: "Grammar Score", value: `${grammarScore}%`, icon: "heart" },
+                ]);
             }
         } catch (err) {
-            console.error('Error fetching dashboard data:', err);
-            setError('Failed to load dashboard data');
+            console.error("Error fetching assignments:", err);
+            toast.error("Failed to load dashboard data");
         } finally {
             setLoading(false);
         }
-    }, []);
+    }, [user, toast]);
 
     useEffect(() => {
-        fetchData();
-    }, [fetchData]);
+        if (user?.id) {
+            fetchAssignments(user.id);
+        }
+    }, [user, fetchAssignments]);
 
     const toggleNotifications = () => setShowNotifications(!showNotifications);
     const unreadCount = notifications.filter(n => n.unread).length;
 
-    const getStatusClass = (status) => {
-        switch (status) {
-            case "assigned": return "warning";
-            case "in_progress": return "primary";
-            case "submitted": return "success";
-            case "revision": return "danger";
-            default: return "neutral";
-        }
-    };
-
-    const formatDeadline = (dateString) => {
-        const date = new Date(dateString);
-        const now = new Date();
-        const diffDays = Math.ceil((date - now) / (1000 * 60 * 60 * 24));
-
-        if (diffDays < 0) return { text: "Overdue", urgent: true };
-        if (diffDays === 0) return { text: "Due today", urgent: true };
-        if (diffDays === 1) return { text: "Due tomorrow", urgent: true };
-        if (diffDays <= 3) return { text: `${diffDays} days left`, urgent: true };
-        return { text: `${diffDays} days left`, urgent: false };
-    };
+    const isLoading = userLoading || loading;
 
     return (
-        <div className={styles.dashboardLayout}>
-            {/* Sidebar */}
-            <aside className={styles.sidebar}>
-                <div className={styles.sidebarHeader}>
-                    <div className={styles.sidebarLogo}>
-                        <span>✍️</span> WriterHub
-                    </div>
+        <>
+            {/* Welcome Header */}
+            <div className={styles.welcomeHeader}>
+                <div>
+                    <h1>Welcome back{user?.fullName ? `, ${user.fullName.split(" ")[0]}` : ""}! 👋</h1>
+                    <p>Here&apos;s an overview of your assignments and progress.</p>
                 </div>
+                <div className={styles.headerActions}>
+                    <button className={styles.navActionButton} onClick={toggleNotifications}>
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <path d="M14.857 17.082a23.848 23.848 0 0 0 5.454-1.31A8.967 8.967 0 0 1 18 9.75V9A6 6 0 0 0 6 9v.75a8.967 8.967 0 0 1-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 0 1-5.714 0m5.714 0a3 3 0 1 1-5.714 0" />
+                        </svg>
+                        {unreadCount > 0 && <span className={styles.notificationBadge}>{unreadCount}</span>}
+                    </button>
+                </div>
+            </div>
 
-                <nav className={styles.sidebarNav}>
-                    <Link href="/writer" className={`${styles.navItem} ${styles.active}`}>
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                            <path d="m2.25 12 8.954-8.955c.44-.439 1.152-.439 1.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75M8.25 21h8.25" />
-                        </svg>
-                        Dashboard
-                    </Link>
-                    <Link href="/writer/assignments" className={styles.navItem}>
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                            <path d="M9 12h3.75M9 15h3.75M9 18h3.75m3 .75H18a2.25 2.25 0 0 0 2.25-2.25V6.108c0-1.135-.845-2.098-1.976-2.192a48.424 48.424 0 0 0-1.123-.08m-5.801 0c-.065.21-.1.433-.1.664 0 .414.336.75.75.75h4.5a.75.75 0 0 0 .75-.75 2.25 2.25 0 0 0-.1-.664m-5.8 0A2.251 2.251 0 0 1 13.5 2.25H15c1.012 0 1.867.668 2.15 1.586m-5.8 0c-.376.023-.75.05-1.124.08C9.095 4.01 8.25 4.973 8.25 6.108V8.25m0 0H4.875c-.621 0-1.125.504-1.125 1.125v11.25c0 .621.504 1.125 1.125 1.125h9.75c.621 0 1.125-.504 1.125-1.125V9.375c0-.621-.504-1.125-1.125-1.125H8.25Z" />
-                        </svg>
-                        Assignments
-                        <span className={styles.navBadge}>2</span>
-                    </Link>
-                    <Link href="/writer/submissions" className={styles.navItem}>
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                            <path d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5m-13.5-9L12 3m0 0 4.5 4.5M12 3v13.5" />
-                        </svg>
-                        Submissions
-                    </Link>
-                    <Link href="/writer/insights" className={styles.navItem}>
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                            <path d="M3.75 3v11.25A2.25 2.25 0 0 0 6 16.5h2.25M3.75 3h-1.5m1.5 0h16.5m0 0h1.5m-1.5 0v11.25A2.25 2.25 0 0 1 18 16.5h-2.25m-7.5 0h7.5m-7.5 0-1 3m8.5-3 1 3m0 0 .5 1.5m-.5-1.5h-9.5m0 0-.5 1.5" />
-                        </svg>
-                        Insights
-                    </Link>
-                </nav>
-
-                <div className={styles.sidebarFooter}>
-                    <div className={styles.userInfo}>
-                        <div className={styles.userAvatar}>
-                            {user?.fullName ? user.fullName.split(" ").map(n => n[0]).join("") : 'U'}
+            {/* Notifications Sidebar */}
+            {showNotifications && (
+                <div className={styles.notificationsOverlay} onClick={toggleNotifications}>
+                    <div className={styles.notificationsSidebar} onClick={e => e.stopPropagation()}>
+                        <div className={styles.notifHeader}>
+                            <h3>Notifications</h3>
+                            <button className={styles.closeNotif} onClick={toggleNotifications}>&times;</button>
                         </div>
-                        <div className={styles.userDetails}>
-                            <span className={styles.userName}>{user?.fullName || 'User'}</span>
-                            <span className={`${styles.userStatus} ${styles[(user?.profile?.status || 'ONBOARDING').toLowerCase()]}`}>
-                                {user?.profile?.status || 'ONBOARDING'}
-                            </span>
+                        <div className={styles.notifList}>
+                            {notifications.map(n => (
+                                <div key={n.id} className={`${styles.notifItem} ${n.unread ? styles.unread : ""}`}>
+                                    <div className={styles.notifTitle}>{n.title}</div>
+                                    <div className={styles.notifMessage}>{n.message}</div>
+                                    <div className={styles.notifTime}>{n.time}</div>
+                                </div>
+                            ))}
+                        </div>
+                        <div className={styles.notifFooter}>
+                            <button onClick={() => setNotifications(notifications.map(n => ({ ...n, unread: false })))}>
+                                Mark all as read
+                            </button>
                         </div>
                     </div>
                 </div>
-            </aside>
+            )}
 
-            {/* Main Content */}
-            <main className={styles.dashboardMain}>
-                {/* Welcome Header */}
-                <div className={styles.welcomeHeader}>
-                    <div>
-                        <h1>Welcome back{user?.fullName ? `, ${user.fullName.split(" ")[0]}` : ''}! 👋</h1>
-                        <p>Here's an overview of your assignments and progress.</p>
-                    </div>
-                    <div className={styles.headerActions}>
-                        <button className={styles.navActionButton} onClick={toggleNotifications}>
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                <path d="M14.857 17.082a23.848 23.848 0 0 0 5.454-1.31A8.967 8.967 0 0 1 18 9.75V9A6 6 0 0 0 6 9v.75a8.967 8.967 0 0 1-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 0 1-5.714 0m5.714 0a3 3 0 1 1-5.714 0" />
-                            </svg>
-                            {unreadCount > 0 && <span className={styles.notificationBadge}>{unreadCount}</span>}
-                        </button>
-                    </div>
-                </div>
-
-                {/* Notifications Sidebar */}
-                {showNotifications && (
-                    <div className={styles.notificationsOverlay} onClick={toggleNotifications}>
-                        <div className={styles.notificationsSidebar} onClick={e => e.stopPropagation()}>
-                            <div className={styles.notifHeader}>
-                                <h3>Notifications</h3>
-                                <button className={styles.closeNotif} onClick={toggleNotifications}>&times;</button>
-                            </div>
-                            <div className={styles.notifList}>
-                                {notifications.map(n => (
-                                    <div key={n.id} className={`${styles.notifItem} ${n.unread ? styles.unread : ""}`}>
-                                        <div className={styles.notifTitle}>{n.title}</div>
-                                        <div className={styles.notifMessage}>{n.message}</div>
-                                        <div className={styles.notifTime}>{n.time}</div>
-                                    </div>
-                                ))}
-                            </div>
-                            <div className={styles.notifFooter}>
-                                <button onClick={() => setNotifications(notifications.map(n => ({ ...n, unread: false })))}>
-                                    Mark all as read
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                )}
-
-                {/* Stats Grid */}
+            {/* Stats Grid */}
+            {isLoading ? (
+                <SkeletonStats count={4} />
+            ) : (
                 <div className={styles.statsGrid}>
                     {stats.map((stat, idx) => (
                         <div key={idx} className={styles.statCard}>
                             <div className={styles.statIcon}>
-                                {stat.icon === "clipboard" && (
-                                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                        <path d="M9 12h3.75M9 15h3.75M9 18h3.75m3 .75H18a2.25 2.25 0 0 0 2.25-2.25V6.108c0-1.135-.845-2.098-1.976-2.192a48.424 48.424 0 0 0-1.123-.08m0 0V4.5A2.25 2.25 0 0 0 15 2.25H9A2.25 2.25 0 0 0 6.75 4.5v.108c-.375.024-.75.05-1.124.08C4.095 4.782 3.25 5.745 3.25 6.88V18a2.25 2.25 0 0 0 2.25 2.25h3" />
-                                    </svg>
-                                )}
-                                {stat.icon === "check" && (
-                                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                        <path d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
-                                    </svg>
-                                )}
-                                {stat.icon === "star" && (
-                                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                        <path d="M11.48 3.499a.562.562 0 0 1 1.04 0l2.125 5.111a.563.563 0 0 0 .475.345l5.518.442c.499.04.701.663.321.988l-4.204 3.602a.563.563 0 0 0-.182.557l1.285 5.385a.562.562 0 0 1-.84.61l-4.725-2.885a.563.563 0 0 0-.586 0L6.982 20.54a.562.562 0 0 1-.84-.61l1.285-5.386a.562.562 0 0 0-.182-.557l-4.204-3.602a.563.563 0 0 1 .321-.988l5.518-.442a.563.563 0 0 0 .475-.345L11.48 3.5Z" />
-                                    </svg>
-                                )}
-                                {stat.icon === "heart" && (
-                                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                        <path d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12Z" />
-                                    </svg>
-                                )}
+                                <StatIcon icon={stat.icon} />
                             </div>
                             <div className={styles.statContent}>
                                 <span className={styles.statValue}>{stat.value}</span>
@@ -228,28 +169,34 @@ export default function WriterDashboard() {
                         </div>
                     ))}
                 </div>
+            )}
 
-                {/* Assignments Section */}
-                <div className={styles.section}>
-                    <div className={styles.sectionHeader}>
-                        <h2>Your Assignments</h2>
-                        <Link href="/writer/assignments" className="btn btn-ghost btn-sm">
-                            View All
-                        </Link>
-                    </div>
+            {/* Assignments Section */}
+            <div className={styles.section}>
+                <div className={styles.sectionHeader}>
+                    <h2>Your Assignments</h2>
+                    <Link href="/writer/assignments" className="btn btn-ghost btn-sm">
+                        View All
+                    </Link>
+                </div>
 
-                    <div className={styles.assignmentsList}>
-                        {loading ? (
-                            <div style={{ textAlign: 'center', padding: '40px' }}>
-                                <div className="spinner"></div>
-                                <p>Loading assignments...</p>
-                            </div>
-                        ) : assignments.length === 0 ? (
-                            <div style={{ textAlign: 'center', padding: '40px' }}>
-                                <p>No active assignments.</p>
-                            </div>
-                        ) : assignments.map((assignment) => {
+                <div className={styles.assignmentsList}>
+                    {isLoading ? (
+                        <>
+                            <SkeletonCard />
+                            <SkeletonCard />
+                            <SkeletonCard />
+                        </>
+                    ) : assignments.length === 0 ? (
+                        <EmptyState
+                            title="No assignments yet"
+                            description="You don't have any assignments right now. Check back later!"
+                        />
+                    ) : (
+                        assignments.map((assignment) => {
                             const deadline = formatDeadline(assignment.deadline);
+                            const statusKey = getAssignmentStatusKey(assignment);
+                            const statusConfig = getStatusConfig(statusKey);
                             return (
                                 <div key={assignment.id} className={styles.assignmentCard}>
                                     <div className={styles.assignmentHeader}>
@@ -277,21 +224,21 @@ export default function WriterDashboard() {
                                         </span>
                                     </div>
                                     <div className={styles.assignmentFooter}>
-                                        <span className={`${styles.status} ${styles[getStatusClass(assignment.status.toLowerCase())]}`}>
-                                            {assignment.status.replace("_", " ")}
+                                        <span className={`${styles.status} ${styles[statusConfig.badge]}`}>
+                                            {statusConfig.label}
                                         </span>
-                                        {assignment.status.toLowerCase() !== "submitted" && assignment.status.toLowerCase() !== "completed" && (
+                                        {statusKey !== "submitted" && statusKey !== "completed" && (
                                             <Link href={`/writer/assignments/${assignment.id}/submit`} className="btn btn-primary btn-sm">
-                                                {assignment.status.toLowerCase() === "assigned" ? "Start Working" : "Submit Work"}
+                                                {statusKey === "assigned" ? "Start Working" : "Submit Work"}
                                             </Link>
                                         )}
                                     </div>
                                 </div>
                             );
-                        })}
-                    </div>
+                        })
+                    )}
                 </div>
-            </main>
-        </div>
+            </div>
+        </>
     );
 }
