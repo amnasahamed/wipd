@@ -433,6 +433,35 @@
     background: var(--bg-secondary);
 }
 
+/* Revision Notice */
+.revisionNotice {
+    margin-top: var(--space-3);
+    padding: var(--space-3);
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--warning-200);
+    background: var(--warning-50);
+    color: var(--warning-900);
+}
+
+.revisionNoticeTitle {
+    font-weight: 700;
+    margin-bottom: var(--space-2);
+}
+
+.revisionNoticeBody {
+    white-space: pre-wrap;
+}
+
+/* Status Notice */
+.statusNotice {
+    margin-top: var(--space-3);
+    padding: var(--space-3);
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--border-light);
+    background: var(--bg-secondary);
+    color: var(--text-secondary);
+}
+
 /* Responsive */
 @media (max-width: 1024px) {
     .submitGrid {

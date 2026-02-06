@@ -164,6 +164,26 @@
     margin-bottom: 0;
 }
 
+/* Admin Notes */
+.adminNotes {
+    margin-top: var(--space-3);
+    padding: var(--space-3);
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--border-light);
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+}
+
+.adminNotesLabel {
+    font-weight: 700;
+    margin-bottom: var(--space-2);
+}
+
+.adminNotesBody {
+    white-space: pre-wrap;
+    color: var(--text-secondary);
+}
+
 /* Card Actions */
 .cardActions {
     padding-top: var(--space-5);
