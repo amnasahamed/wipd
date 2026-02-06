@@ -34,13 +34,18 @@ export default function ApplicationsPage() {
     };
 
     const filteredApplications = applications.filter((app) => {
-        const matchesStatus = statusFilter === "all" || app.status.toLowerCase() === statusFilter.toLowerCase();
-        const matchesSearch = app.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            app.email.toLowerCase().includes(searchQuery.toLowerCase());
+        const status = app.status || '';
+        const name = app.name || '';
+        const email = app.email || '';
+        
+        const matchesStatus = statusFilter === "all" || status.toLowerCase() === statusFilter.toLowerCase();
+        const matchesSearch = name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            email.toLowerCase().includes(searchQuery.toLowerCase());
         return matchesStatus && matchesSearch;
     });
 
     const formatDate = (dateString) => {
+        if (!dateString) return 'N/A';
         return new Date(dateString).toLocaleDateString("en-US", {
             month: "short",
             day: "numeric",
@@ -141,11 +146,11 @@ export default function ApplicationsPage() {
                                             <td>
                                                 <div className={styles.writerInfo}>
                                                     <div className={styles.avatar}>
-                                                        {app.name.split(" ").map(n => n[0]).join("")}
+                                                        {(app.name || "?").split(" ").map(n => n[0]).join("")}
                                                     </div>
                                                     <div>
-                                                        <div className={styles.writerName}>{app.name}</div>
-                                                        <div className={styles.writerEmail}>{app.email}</div>
+                                                        <div className={styles.writerName}>{app.name || "Unknown"}</div>
+                                                        <div className={styles.writerEmail}>{app.email || "No Email"}</div>
                                                     </div>
                                                 </div>
                                             </td>
@@ -167,8 +172,8 @@ export default function ApplicationsPage() {
                                                 </div>
                                             </td>
                                             <td>
-                                                <span className={`badge ${app.status.toLowerCase() === 'active' ? 'badge-success' : app.status.toLowerCase() === 'rejected' ? 'badge-error' : 'badge-warning'}`}>
-                                                    {app.status}
+                                                <span className={`badge ${(app.status || '').toLowerCase() === 'active' ? 'badge-success' : (app.status || '').toLowerCase() === 'rejected' ? 'badge-error' : 'badge-warning'}`}>
+                                                    {app.status || 'Pending'}
                                                 </span>
                                             </td>
                                             <td>
