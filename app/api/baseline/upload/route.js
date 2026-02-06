@@ -27,7 +27,17 @@ export async function POST(request) {
         if (!profile) return NextResponse.json({ error: "Writer profile not found" }, { status: 404 });
 
         // 2) Extract text & compute per-sample style metrics
-        const text = await extractTextFromFile(file);
+        let text;
+        try {
+            text = await extractTextFromFile(file);
+        } catch (e) {
+            return NextResponse.json({ error: e.message || "File extraction failed" }, { status: 400 });
+        }
+
+        if (!text || text.trim().length === 0) {
+            return NextResponse.json({ error: "Extracted text is empty" }, { status: 400 });
+        }
+
         const sampleMetrics = calculateStyleMetrics(text);
 
         if (!sampleMetrics) {
