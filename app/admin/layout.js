@@ -18,20 +18,22 @@ export default function AdminLayout({ children }) {
                     setAdmin(data.user);
                 }
             })
-            .catch(() => {});
+            .catch(() => { });
     }, []);
 
     const handleLogout = async () => {
         try {
             await fetch("/api/auth/logout", { method: "POST" });
-        } catch {}
+        } catch { }
         router.push("/login");
     };
 
     const isActive = (path) => {
-        if (path === "/admin" && pathname === "/admin") return styles.active;
-        if (path !== "/admin" && pathname.startsWith(path)) return styles.active;
-        return "";
+        if (!pathname) return "";
+        if (path === "/admin") {
+            return pathname === "/admin" ? styles.active : "";
+        }
+        return pathname === path || pathname.startsWith(path + "/") ? styles.active : "";
     };
 
     const adminName = admin?.profile?.fullName || admin?.email || "Admin";

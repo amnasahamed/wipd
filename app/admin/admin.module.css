@@ -17,13 +17,17 @@
     display: flex;
     flex-direction: column;
     position: fixed;
-    height: 100vh;
-    z-index: 50;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    z-index: 1000; /* Increased z-index */
     box-shadow: 4px 0 24px rgba(0, 0, 0, 0.05);
+    overflow-y: auto; /* Ensure sidebar itself is scrollable if content overflows */
 }
 
 .sidebarHeader {
     padding: 32px 24px;
+    flex-shrink: 0;
 }
 
 .sidebarLogo {
@@ -76,6 +80,9 @@
     cursor: pointer;
     text-decoration: none;
     margin-bottom: 4px;
+    white-space: nowrap; /* Prevent text wrapping */
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .navItem:hover {
@@ -95,6 +102,7 @@
     height: 20px;
     min-width: 20px;
     opacity: 0.7;
+    flex-shrink: 0;
 }
 
 .navItem.active svg {
@@ -107,6 +115,8 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
+    flex-shrink: 0;
+    background: #0f172a; /* Ensure footer background matches sidebar */
 }
 
 .logoutBtn {
@@ -133,6 +143,7 @@
     display: flex;
     align-items: center;
     gap: 12px;
+    overflow: hidden; /* Prevent spillover */
 }
 
 .userAvatar {
@@ -147,6 +158,7 @@
     font-size: 14px;
     color: white;
     box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+    flex-shrink: 0;
 }
 
 .userDetails {
@@ -158,11 +170,17 @@
     font-size: 14px;
     font-weight: 600;
     color: #ffffff;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .userRole {
     font-size: 12px;
     color: #94a3b8;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 /* Main Content */
@@ -171,7 +189,8 @@
     margin-left: 270px;
     padding: 40px;
     min-height: 100vh;
-    max-width: 1600px;
+    width: calc(100% - 270px); /* Explicit width calculation */
+    box-sizing: border-box;
 }
 
 /* Header */

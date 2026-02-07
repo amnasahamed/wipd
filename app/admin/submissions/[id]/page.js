@@ -147,183 +147,163 @@ export default function SubmissionDetailPage() {
     };
 
     return (
-        <div className={styles.adminLayout}>
-            <aside className={styles.sidebar}>
-                <div className={styles.sidebarHeader}>
-                    <div className={styles.sidebarLogo}>
-                        <span>✍️</span> Writer<span>Integrity</span>
+    return (
+        <main className={styles.adminMain}>
+            <div className={detailStyles.reportHeader}>
+                <div>
+                    <div className={detailStyles.writerBadge}>
+                        <div className={detailStyles.avatar}>{writerAvatar}</div>
+                        <span>{writerName}</span>
+                        <span className={`badge badge-success`}>{submission.status}</span>
                     </div>
+                    <h1 className={detailStyles.title}>{assignmentTitle}</h1>
+                    <p className={detailStyles.meta}>Submitted {formatDate(submission.createdAt)} • ID: {id}</p>
                 </div>
-                <nav className={styles.sidebarNav}>
-                    <div className={styles.navSection}>
-                        <span className={styles.navSectionTitle}>Navigation</span>
-                        <Link href="/admin/integrity" className={styles.navItem}>
-                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" width="20" height="20">
-                                <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 19.5 3 12m0 0 7.5-7.5M3 12h18" />
-                            </svg>
-                            Back to Reports
-                        </Link>
-                    </div>
-                </nav>
-            </aside>
+                <div className={detailStyles.actions}>
+                    <button className="btn btn-secondary">Download PDF</button>
+                    <button
+                        className="btn btn-warning"
+                        disabled={isUpdatingStatus}
+                        onClick={() => {
+                            const reason = prompt('Reason / notes for revision request:');
+                            if (reason === null) return;
+                            if (reason.trim().length === 0) {
+                                alert('Notes are required to request a revision.');
+                                return;
+                            }
+                            updateSubmissionStatus('NEEDS_REWRITE', reason);
+                        }}
+                    >
+                        Request Revision
+                    </button>
+                    <button
+                        className="btn btn-danger"
+                        disabled={isUpdatingStatus}
+                        onClick={() => {
+                            const confirmed = confirm('Reject this submission?');
+                            if (!confirmed) return;
+                            const reason = prompt('Reason / notes for rejection:');
+                            if (reason === null) return;
+                            if (reason.trim().length === 0) {
+                                alert('Notes are required to reject a submission.');
+                                return;
+                            }
+                            updateSubmissionStatus('REJECTED', reason);
+                        }}
+                    >
+                        Reject
+                    </button>
+                    <button
+                        className="btn btn-success"
+                        disabled={isUpdatingStatus}
+                        onClick={() => updateSubmissionStatus('APPROVED')}
+                    >
+                        Approve Submission
+                    </button>
+                </div>
+            </div>
 
-            <main className={styles.adminMain}>
-                <div className={detailStyles.reportHeader}>
-                    <div>
-                        <div className={detailStyles.writerBadge}>
-                            <div className={detailStyles.avatar}>{writerAvatar}</div>
-                            <span>{writerName}</span>
-                            <span className={`badge badge-success`}>{submission.status}</span>
+            <div className={detailStyles.reportGrid}>
+                {/* Left Column: Deterministic Metrics */}
+                <div className={detailStyles.column}>
+                    <section className={detailStyles.sectionCard}>
+                        <h3>Stylometry Baseline Analysis</h3>
+                        <div className={detailStyles.metricMain}>
+                            <div className={detailStyles.gaugeContainer}>
+                                <div className={detailStyles.gaugeLabel}>Style Match</div>
+                                <div className={detailStyles.gaugeValue}>{styleMatch}%</div>
+                            </div>
+                            <div className={detailStyles.statList}>
+                                <div className={detailStyles.statItem}>
+                                    <span className={detailStyles.statLabel}>Sentence Var.</span>
+                                    <span className={detailStyles.statVal}>Normal</span>
+                                </div>
+                                <div className={detailStyles.statItem}>
+                                    <span className={detailStyles.statLabel}>Vocab Diversity</span>
+                                    <span className={detailStyles.statVal}>Moderate</span>
+                                </div>
+                                <div className={detailStyles.statItem}>
+                                    <span className={detailStyles.statLabel}>Readability</span>
+                                    <span className={detailStyles.statVal}>Standard</span>
+                                </div>
+                            </div>
                         </div>
-                        <h1 className={detailStyles.title}>{assignmentTitle}</h1>
-                        <p className={detailStyles.meta}>Submitted {formatDate(submission.createdAt)} • ID: {id}</p>
-                    </div>
-                    <div className={detailStyles.actions}>
-                        <button className="btn btn-secondary">Download PDF</button>
-                        <button
-                            className="btn btn-warning"
-                            disabled={isUpdatingStatus}
-                            onClick={() => {
-                                const reason = prompt('Reason / notes for revision request:');
-                                if (reason === null) return;
-                                if (reason.trim().length === 0) {
-                                    alert('Notes are required to request a revision.');
-                                    return;
-                                }
-                                updateSubmissionStatus('NEEDS_REWRITE', reason);
-                            }}
-                        >
-                            Request Revision
-                        </button>
-                        <button
-                            className="btn btn-danger"
-                            disabled={isUpdatingStatus}
-                            onClick={() => {
-                                const confirmed = confirm('Reject this submission?');
-                                if (!confirmed) return;
-                                const reason = prompt('Reason / notes for rejection:');
-                                if (reason === null) return;
-                                if (reason.trim().length === 0) {
-                                    alert('Notes are required to reject a submission.');
-                                    return;
-                                }
-                                updateSubmissionStatus('REJECTED', reason);
-                            }}
-                        >
-                            Reject
-                        </button>
-                        <button
-                            className="btn btn-success"
-                            disabled={isUpdatingStatus}
-                            onClick={() => updateSubmissionStatus('APPROVED')}
-                        >
-                            Approve Submission
-                        </button>
-                    </div>
+                        <p className={detailStyles.interpretation}>
+                            Analysis based on submitted content compared to writer baseline.
+                        </p>
+                    </section>
+
+                    <section className={detailStyles.sectionCard}>
+                        <h3>Internal Similarity</h3>
+                        <div className={detailStyles.similarityHeader}>
+                            <span className={detailStyles.similarityScore}>{internalSimilarity}% Overlap</span>
+                            <span className="badge badge-success">Low Risk</span>
+                        </div>
+                        <div className={detailStyles.similarityNote}>
+                            No significant overlap detected with internal database.
+                        </div>
+                    </section>
                 </div>
 
-                <div className={detailStyles.reportGrid}>
-                    {/* Left Column: Deterministic Metrics */}
-                    <div className={detailStyles.column}>
-                        <section className={detailStyles.sectionCard}>
-                            <h3>Stylometry Baseline Analysis</h3>
-                            <div className={detailStyles.metricMain}>
-                                <div className={detailStyles.gaugeContainer}>
-                                    <div className={detailStyles.gaugeLabel}>Style Match</div>
-                                    <div className={detailStyles.gaugeValue}>{styleMatch}%</div>
+                {/* Right Column: LLM Intelligence */}
+                <div className={detailStyles.column}>
+                    {llmResults ? (
+                        <>
+                            <section className={`${detailStyles.sectionCard} ${detailStyles.aiRiskCard}`}>
+                                <div className={detailStyles.cardHeader}>
+                                    <h3>AI Assistant Risk</h3>
+                                    <span className={detailStyles.scorePill}>{llmResults.aiRisk?.score || 0}% AI Probability</span>
                                 </div>
-                                <div className={detailStyles.statList}>
-                                    <div className={detailStyles.statItem}>
-                                        <span className={detailStyles.statLabel}>Sentence Var.</span>
-                                        <span className={detailStyles.statVal}>Normal</span>
-                                    </div>
-                                    <div className={detailStyles.statItem}>
-                                        <span className={detailStyles.statLabel}>Vocab Diversity</span>
-                                        <span className={detailStyles.statVal}>Moderate</span>
-                                    </div>
-                                    <div className={detailStyles.statItem}>
-                                        <span className={detailStyles.statLabel}>Readability</span>
-                                        <span className={detailStyles.statVal}>Standard</span>
-                                    </div>
+
+                                <div className={detailStyles.markerList}>
+                                    {(llmResults.aiRisk?.markers || []).map((m, i) => (
+                                        <div key={i} className={`${detailStyles.marker} ${detailStyles[m.type]}`}>
+                                            {m.message}
+                                        </div>
+                                    ))}
                                 </div>
-                            </div>
-                            <p className={detailStyles.interpretation}>
-                                Analysis based on submitted content compared to writer baseline.
-                            </p>
-                        </section>
-
-                        <section className={detailStyles.sectionCard}>
-                            <h3>Internal Similarity</h3>
-                            <div className={detailStyles.similarityHeader}>
-                                <span className={detailStyles.similarityScore}>{internalSimilarity}% Overlap</span>
-                                <span className="badge badge-success">Low Risk</span>
-                            </div>
-                            <div className={detailStyles.similarityNote}>
-                                No significant overlap detected with internal database.
-                            </div>
-                        </section>
-                    </div>
-
-                    {/* Right Column: LLM Intelligence */}
-                    <div className={detailStyles.column}>
-                        {llmResults ? (
-                            <>
-                                <section className={`${detailStyles.sectionCard} ${detailStyles.aiRiskCard}`}>
-                                    <div className={detailStyles.cardHeader}>
-                                        <h3>AI Assistant Risk</h3>
-                                        <span className={detailStyles.scorePill}>{llmResults.aiRisk?.score || 0}% AI Probability</span>
-                                    </div>
-
-                                    <div className={detailStyles.markerList}>
-                                        {(llmResults.aiRisk?.markers || []).map((m, i) => (
-                                            <div key={i} className={`${detailStyles.marker} ${detailStyles[m.type]}`}>
-                                                {m.message}
-                                            </div>
-                                        ))}
-                                    </div>
-                                    <div className={detailStyles.analystNote}>
-                                        <strong>LLM Evaluation:</strong> {llmResults.aiRisk?.fragmentAnalysis || 'Analysis pending.'}
-                                    </div>
-                                </section>
-
-                                <section className={detailStyles.sectionCard}>
-                                    <h3>Citation Sanity Check</h3>
-                                    <div className={detailStyles.citationHeader}>
-                                        <span className={detailStyles.citationCount}>
-                                            {llmResults.citations?.verifiedCount || 0}/{llmResults.citations?.totalCount || 0} Verified
-                                        </span>
-                                    </div>
-                                    <div className={detailStyles.citationList}>
-                                        {(llmResults.citations?.checkResults || []).map((c) => (
-                                            <div key={c.id} className={detailStyles.citationItem}>
-                                                <div className={detailStyles.citationSource}>
-                                                    <span className={`${detailStyles.dot} ${detailStyles[c.status]}`}></span>
-                                                    <strong>{c.source}</strong>
-                                                </div>
-                                                <div className={detailStyles.citationSnippet}>{c.snippet}</div>
-                                            </div>
-                                        ))}
-                                    </div>
-                                </section>
-
-                                <section className={`${detailStyles.sectionCard} ${detailStyles.reasoningCard}`}>
-                                    <h3>Reasoning Depth</h3>
-                                    <div className={detailStyles.reasoningHeader}>
-                                        <span className={detailStyles.reasoningScore}>{llmResults.reasoning?.score || 0}</span>
-                                        <span className={detailStyles.scoreMax}>/ 100</span>
-                                    </div>
-                                    <p className={detailStyles.reasoningText}>{llmResults.reasoning?.analysis || 'Analysis pending.'}</p>
-                                </section>
-                            </>
-                        ) : (
-                            <section className={detailStyles.sectionCard}>
-                                <h3>LLM Analysis</h3>
-                                <p>LLM analysis data is not available for this submission.</p>
+                                <div className={detailStyles.analystNote}>
+                                    <strong>LLM Evaluation:</strong> {llmResults.aiRisk?.fragmentAnalysis || 'Analysis pending.'}
+                                </div>
                             </section>
-                        )}
-                    </div>
+
+                            <section className={detailStyles.sectionCard}>
+                                <h3>Citation Sanity Check</h3>
+                                <div className={detailStyles.citationHeader}>
+                                    <span className={detailStyles.citationCount}>
+                                        {llmResults.citations?.verifiedCount || 0}/{llmResults.citations?.totalCount || 0} Verified
+                                    </span>
+                                </div>
+                                <div className={detailStyles.citationList}>
+                                    {(llmResults.citations?.checkResults || []).map((c) => (
+                                        <div key={c.id} className={detailStyles.citationItem}>
+                                            <div className={detailStyles.citationSource}>
+                                                <span className={`${detailStyles.dot} ${detailStyles[c.status]}`}></span>
+                                                <strong>{c.source}</strong>
+                                            </div>
+                                            <div className={detailStyles.citationSnippet}>{c.snippet}</div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </section>
+
+                            <section className={`${detailStyles.sectionCard} ${detailStyles.reasoningCard}`}>
+                                <h3>Reasoning Depth</h3>
+                                <div className={detailStyles.reasoningHeader}>
+                                    <span className={detailStyles.reasoningScore}>{llmResults.reasoning?.score || 0}</span>
+                                    <span className={detailStyles.scoreMax}>/ 100</span>
+                                </div>
+                                <p className={detailStyles.reasoningText}>{llmResults.reasoning?.analysis || 'Analysis pending.'}</p>
+                            </section>
+                        </>
+                    ) : (
+                        <section className={detailStyles.sectionCard}>
+                            <h3>LLM Analysis</h3>
+                            <p>LLM analysis data is not available for this submission.</p>
+                        </section>
+                    )}
                 </div>
-            </main>
-        </div>
+            </div>
+        </main>
     );
 }
