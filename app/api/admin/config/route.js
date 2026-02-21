@@ -1,63 +1,141 @@
 import { NextResponse } from 'next/server';
-import prisma from '@/lib/prisma';
 import { requireAdmin } from '@/lib/auth/session';
+import { 
+    getAllConfig, 
+    setMultipleConfig, 
+    testEncryption, 
+    getConfigSummary,
+    initializeDefaultConfig 
+} from '@/lib/config/secure-config';
 
 export const dynamic = 'force-dynamic';
 
+/**
+ * GET /api/admin/config
+ * Get all configuration values (secrets are masked)
+ */
 export async function GET() {
     try {
-        const { errorResponse } = await requireAdmin();
+        const { user, errorResponse } = await requireAdmin();
         if (errorResponse) return errorResponse;
 
-        const configs = await prisma.systemConfig.findMany();
-
-        // Convert array to object for easier frontend consumption
-        const configMap = {};
-        configs.forEach(c => {
-            // If secret, don't return the value for security (or mask it)
-            // But for the settings page editors, we might need to show if it's set or allow overwrite
-            // Let's return masked value if secret
-            configMap[c.key] = c.isSecret ? '********' : c.value;
-        });
+        // Get configuration with secrets masked for security
+        const config = await getAllConfig({ decryptSecrets: false, maskSecrets: true });
+        
+        // Get config summary for additional context
+        const summary = await getConfigSummary();
 
         return NextResponse.json({
             success: true,
-            config: configMap
+            config,
+            summary,
+            encryption: {
+                enabled: true,
+                working: testEncryption()
+            }
         });
     } catch (error) {
-        return NextResponse.json({ error: 'Failed to fetch config' }, { status: 500 });
+        console.error('Config fetch error:', error);
+        return NextResponse.json(
+            { success: false, error: 'Failed to fetch configuration' },
+            { status: 500 }
+        );
     }
 }
 
+/**
+ * POST /api/admin/config
+ * Update configuration values
+ */
 export async function POST(request) {
+    try {
+        const { user, errorResponse } = await requireAdmin();
+        if (errorResponse) return errorResponse;
+
+        const body = await request.json();
+        const { settings } = body;
+
+        if (!settings || typeof settings !== 'object') {
+            return NextResponse.json(
+                { success: false, error: 'No settings provided' },
+                { status: 400 }
+            );
+        }
+
+        // Validate settings
+        const validKeys = [
+            // LLM Provider settings
+            'llm_provider', 'openai_api_key', 'openai_model',
+            'anthropic_api_key', 'anthropic_model',
+            'gemini_api_key', 'gemini_model',
+            'groq_api_key', 'groq_model', 'system_prompt',
+            // Risk thresholds
+            'risk_threshold_high', 'risk_threshold_medium',
+            'integrity_threshold_low', 'integrity_threshold_medium',
+            // Feature flags
+            'enable_llm_analysis', 'enable_style_analysis', 'enable_citation_check',
+            // Rate limiting
+            'max_requests_per_minute', 'max_file_size_mb'
+        ];
+
+        const invalidKeys = Object.keys(settings).filter(key => !validKeys.includes(key));
+        if (invalidKeys.length > 0) {
+            return NextResponse.json(
+                { success: false, error: `Invalid configuration keys: ${invalidKeys.join(', ')}` },
+                { status: 400 }
+            );
+        }
+
+        // Save configuration
+        const result = await setMultipleConfig(settings, { updatedBy: user.id });
+
+        if (!result.success && result.errors.length > 0) {
+            return NextResponse.json(
+                { 
+                    success: false, 
+                    error: 'Some settings failed to save',
+                    details: result.errors 
+                },
+                { status: 500 }
+            );
+        }
+
+        return NextResponse.json({
+            success: true,
+            message: 'Settings saved successfully',
+            saved: result.results.length,
+            errors: result.errors
+        });
+
+    } catch (error) {
+        console.error('Config save error:', error);
+        return NextResponse.json(
+            { success: false, error: 'Failed to save settings: ' + error.message },
+            { status: 500 }
+        );
+    }
+}
+
+/**
+ * PUT /api/admin/config/initialize
+ * Initialize default configuration
+ */
+export async function PUT() {
     try {
         const { errorResponse } = await requireAdmin();
         if (errorResponse) return errorResponse;
 
-        const body = await request.json();
-        const { settings } = body; // Expects object { key: value, ... }
+        await initializeDefaultConfig();
 
-        if (!settings) return NextResponse.json({ error: 'No settings provided' }, { status: 400 });
-
-        const operations = Object.entries(settings).map(async ([key, value]) => {
-            // Determine if secret based on key name convention
-            const isSecret = key.includes('api_key') || key.includes('secret');
-
-            // Skip update if value is the mask
-            if (value === '********') return;
-
-            return prisma.systemConfig.upsert({
-                where: { key },
-                update: { value, isSecret },
-                create: { key, value, isSecret }
-            });
+        return NextResponse.json({
+            success: true,
+            message: 'Default configuration initialized'
         });
-
-        await Promise.all(operations);
-
-        return NextResponse.json({ success: true, message: 'Settings saved' });
     } catch (error) {
-        console.error('Config save error:', error);
-        return NextResponse.json({ error: 'Failed to save settings' }, { status: 500 });
+        console.error('Config initialization error:', error);
+        return NextResponse.json(
+            { success: false, error: 'Failed to initialize configuration' },
+            { status: 500 }
+        );
     }
 }

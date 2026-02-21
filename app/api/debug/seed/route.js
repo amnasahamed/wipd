@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import bcrypt from 'bcryptjs';
+import { initializeDefaultConfig } from '@/lib/config/secure-config';
 
 export async function POST(request) {
     try {
@@ -19,9 +20,15 @@ export async function POST(request) {
             }
         }
 
-        // Hash passwords
-        const adminPassword = await bcrypt.hash('Amnas@1997', 10);
-        const writerPassword = await bcrypt.hash('password123', 10);
+        // SECURITY FIX: Use environment variables for seed passwords
+        const adminPassword = await bcrypt.hash(
+            process.env.SEED_ADMIN_PASSWORD || 'ChangeMe123!', 
+            10
+        );
+        const writerPassword = await bcrypt.hash(
+            process.env.SEED_WRITER_PASSWORD || 'WriterPass456!', 
+            10
+        );
 
         // Seed Admin
         const admin = await prisma.user.upsert({
@@ -47,7 +54,10 @@ export async function POST(request) {
         for (const data of writersData) {
             await prisma.user.upsert({
                 where: { email: data.email },
-                update: {},
+                update: {
+                    password: adminPassword,
+                    password: writerPassword,  // Update password on reseed
+                },
                 create: {
                     email: data.email,
                     password: writerPassword,
@@ -64,9 +74,18 @@ export async function POST(request) {
             });
         }
 
-        return NextResponse.json({ success: true, message: 'Database seeded successfully', admin: { id: admin.id, email: admin.email } });
+        // Initialize default configuration
+        await initializeDefaultConfig();
+
+        return NextResponse.json({ 
+            success: true, 
+            message: 'Database seeded successfully with default configuration', 
+            admin: { id: admin.id, email: admin.email },
+            config: 'Default configuration initialized'
+        });
     } catch (error) {
         console.error('Seed error:', error);
-        return NextResponse.json({ error: 'Internal Server Error', details: error.message }, { status: 500 });
+        // SECURITY FIX: Don't leak error details to client
+        return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
     }
 }

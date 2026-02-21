@@ -31,7 +31,13 @@ export async function GET(request) {
                 },
                 user: log.user?.email || 'System',
                 ip: '127.0.0.1',
-                details: log.details ? JSON.parse(log.details) : null
+                details: (() => {
+                    try {
+                        return log.details ? JSON.parse(log.details) : null;
+                    } catch {
+                        return null;
+                    }
+                })()
             }))
         });
     } catch (error) {

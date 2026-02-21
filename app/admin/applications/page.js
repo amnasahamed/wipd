@@ -37,7 +37,7 @@ export default function ApplicationsPage() {
         const status = app.status || '';
         const name = app.name || '';
         const email = app.email || '';
-        
+
         const matchesStatus = statusFilter === "all" || status.toLowerCase() === statusFilter.toLowerCase();
         const matchesSearch = name.toLowerCase().includes(searchQuery.toLowerCase()) ||
             email.toLowerCase().includes(searchQuery.toLowerCase());

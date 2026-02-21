@@ -41,7 +41,13 @@ export async function POST(request) {
             profile: {
                 id: profile.id,
                 fullName: profile.fullName,
-                workTypes: profile.workTypes ? JSON.parse(profile.workTypes) : []
+                workTypes: (() => {
+                    try {
+                        return profile.workTypes ? JSON.parse(profile.workTypes) : [];
+                    } catch {
+                        return [];
+                    }
+                })()
             }
         });
     } catch (error) {

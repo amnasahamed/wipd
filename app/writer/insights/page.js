@@ -252,3 +252,15 @@ function WriterInsightsPage() {
         </WriterLayout>
     );
 }
+
+export default function WriterInsightsPage() {
+    return (
+        <Suspense fallback={
+            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
+                <div>Loading...</div>
+            </div>
+        }>
+            <InsightsContent />
+        </Suspense>
+    );
+}

@@ -26,6 +26,16 @@ export async function GET(request, { params }) {
             );
         }
 
+        // Parse workTypes safely
+        let workTypes = [];
+        if (user.profile?.workTypes) {
+            try {
+                workTypes = JSON.parse(user.profile.workTypes);
+            } catch {
+                workTypes = [];
+            }
+        }
+
         return NextResponse.json({
             success: true,
             application: {
@@ -37,7 +47,7 @@ export async function GET(request, { params }) {
                 experience: user.profile?.experience,
                 bio: user.profile?.bio,
                 timezone: user.profile?.timezone,
-                workTypes: user.profile?.workTypes,
+                workTypes,
                 grammarScore: user.profile?.grammarScore,
                 policyScore: user.profile?.policyScore,
                 status: user.profile?.status || 'ONBOARDING',

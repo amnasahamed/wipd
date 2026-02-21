@@ -54,7 +54,13 @@ export async function GET(request) {
                     status: user.profile.status,
                     grammarScore: user.profile.grammarScore,
                     policyScore: user.profile.policyScore,
-                    workTypes: user.profile.workTypes ? JSON.parse(user.profile.workTypes) : []
+                    workTypes: (() => {
+                        try {
+                            return user.profile.workTypes ? JSON.parse(user.profile.workTypes) : [];
+                        } catch {
+                            return [];
+                        }
+                    })()
                 } : null
             }
         });

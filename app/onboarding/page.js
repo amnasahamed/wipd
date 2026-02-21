@@ -331,37 +331,52 @@ export default function OnboardingPage() {
             const userId = userData.user.id; // Get real ID from DB
 
             // 2. Submit Assessment Results (Module 04)
-            await fetch("/api/tests/submit", {
+            const grammarRes = await fetch("/api/tests/submit", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
-                    userId, // Pass the real user ID
+                    userId,
                     testType: "grammar",
                     responses: formData.grammarAnswers
                 })
             });
+            
+            if (!grammarRes.ok) {
+                const err = await grammarRes.json();
+                throw new Error(err.error || "Failed to submit grammar test");
+            }
 
-            await fetch("/api/tests/submit", {
+            const policyRes = await fetch("/api/tests/submit", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
-                    userId, // Pass the real user ID
+                    userId,
                     testType: "policy",
                     responses: formData.policyAnswers
                 })
             });
+            
+            if (!policyRes.ok) {
+                const err = await policyRes.json();
+                throw new Error(err.error || "Failed to submit policy test");
+            }
 
             // 3. Upload Samples & Create Baselines (Module 05)
             const allSamples = [...formData.academicSamples, ...formData.technicalSamples];
             for (const file of allSamples) {
                 const sampleData = new FormData();
                 sampleData.append("file", file);
-                sampleData.append("writerId", userId); // Pass the real user ID
+                sampleData.append("writerId", userId);
 
-                await fetch("/api/baseline/upload", {
+                const uploadRes = await fetch("/api/baseline/upload", {
                     method: "POST",
                     body: sampleData
                 });
+                
+                if (!uploadRes.ok) {
+                    const err = await uploadRes.json();
+                    throw new Error(err.error || `Failed to upload sample: ${file.name}`);
+                }
             }
 
             setIsCompleted(true);
@@ -551,29 +566,43 @@ export default function OnboardingPage() {
 
                     {!isCompleted && (
                         <div className={styles.onboardingCardFooter}>
-                            {currentStep > 0 ? (
-                                <button onClick={prevStep} className="btn btn-secondary">
-                                    ← Back
-                                </button>
-                            ) : (
-                                <div></div>
-                            )}
-                            <button
-                                onClick={nextStep}
-                                className="btn btn-primary"
-                                disabled={isSubmitting}
-                            >
-                                {isSubmitting ? (
-                                    <>
-                                        <span className="spinner spinner-sm"></span>
-                                        Submitting...
-                                    </>
-                                ) : currentStep === STEPS.length - 1 ? (
-                                    "Submit Application"
-                                ) : (
-                                    "Continue →"
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', width: '100%' }}>
+                                {errors.submit && (
+                                    <div className="alert alert-danger">
+                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                            <circle cx="12" cy="12" r="10"></circle>
+                                            <line x1="12" y1="8" x2="12" y2="12"></line>
+                                            <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                                        </svg>
+                                        {errors.submit}
+                                    </div>
                                 )}
-                            </button>
+                                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                    {currentStep > 0 ? (
+                                        <button onClick={prevStep} className="btn btn-secondary">
+                                            ← Back
+                                        </button>
+                                    ) : (
+                                        <div></div>
+                                    )}
+                                    <button
+                                        onClick={nextStep}
+                                        className="btn btn-primary"
+                                        disabled={isSubmitting}
+                                    >
+                                        {isSubmitting ? (
+                                            <>
+                                                <span className="spinner spinner-sm"></span>
+                                                Submitting...
+                                            </>
+                                        ) : currentStep === STEPS.length - 1 ? (
+                                            "Submit Application"
+                                        ) : (
+                                            "Continue →"
+                                        )}
+                                    </button>
+                                </div>
+                            </div>
                         </div>
                     )}
                 </div>

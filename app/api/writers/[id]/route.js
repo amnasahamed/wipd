@@ -91,7 +91,16 @@ export async function PATCH(request, { params }) {
             return NextResponse.json({ error: 'Status is required' }, { status: 400 });
         }
 
-        // We update the Profile status, not the User table directly (unless we had a global status there)
+        // VALIDATION FIX: Only allow valid status values
+        const validStatuses = ['ONBOARDING', 'ACTIVE', 'SUSPENDED'];
+        if (!validStatuses.includes(status)) {
+            return NextResponse.json(
+                { error: `Invalid status. Must be one of: ${validStatuses.join(', ')}` },
+                { status: 400 }
+            );
+        }
+
+        // We update the Profile status, not the User table directly
         const updatedProfile = await prisma.profile.update({
             where: { userId: id },
             data: { status }
@@ -116,23 +125,46 @@ export async function DELETE(request, { params }) {
 
         const { id } = await params;
 
-        // Transaction to ensure clean cleanup
-        // Note: Submissions are kept or deleted based on business logic. 
-        // Here we'll demonstrate a cascade delete for User & Profile.
-        // If relations are not set to cascade in DB, we must delete manually.
-
+        // DATA INTEGRITY FIX: Proper cascade delete order respecting FK constraints
         await prisma.$transaction(async (tx) => {
-            // 1. Delete Profile (and usually submissions if they are strictly owned, 
-            // but in this system assignments might need to be preserved for audit.
-            // For now, let's assuming deleting the USER is the primary goal).
+            // 1. Get profile ID first
+            const profile = await tx.profile.findUnique({
+                where: { userId: id },
+                select: { id: true }
+            });
 
-            // To be safe against FK constraints if not Cascade:
-            // Delete Profile first (User -> Profile is 1:1)
+            if (!profile) {
+                throw new Error('Profile not found');
+            }
+
+            // 2. Delete AnalysisResults for all submissions by this writer
+            await tx.analysisResult.deleteMany({
+                where: { 
+                    submission: { writerId: profile.id }
+                }
+            });
+
+            // 3. Delete Submissions by this writer
+            await tx.submission.deleteMany({
+                where: { writerId: profile.id }
+            });
+
+            // 4. Delete Assignments by this writer
+            await tx.assignment.deleteMany({
+                where: { writerId: profile.id }
+            });
+
+            // 5. Delete Profile
             await tx.profile.delete({
                 where: { userId: id }
             });
 
-            // Delete User
+            // 6. Delete User's audit logs (optional - could preserve for compliance)
+            await tx.auditLog.deleteMany({
+                where: { userId: id }
+            });
+
+            // 7. Finally delete User
             await tx.user.delete({
                 where: { id }
             });

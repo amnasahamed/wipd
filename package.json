@@ -12,6 +12,7 @@
   "dependencies": {
     "@vercel/blob": "^2.0.1",
     "bcryptjs": "^3.0.3",
+    "crypto-js": "^4.2.0",
     "mammoth": "^1.11.0",
     "next": "16.1.6",
     "react": "19.2.3",

@@ -27,7 +27,13 @@ export async function GET(request) {
             success: true,
             submissions: submissions.map(s => {
                 const result = s.analysisResults?.[0]; // Get latest result
-                const signals = result?.signals ? JSON.parse(result.signals) : [];
+                let signals = [];
+                try {
+                    signals = result?.signals ? JSON.parse(result.signals) : [];
+                } catch (e) {
+                    console.error('Error parsing signals for submission', s.id, e);
+                    signals = [];
+                }
 
                 return {
                     id: s.id,

@@ -96,9 +96,26 @@ model AuditLog {
 }
 
 model SystemConfig {
-  id        String   @id @default(cuid())
-  key       String   @unique // e.g., 'llm_provider', 'openai_api_key'
-  value     String   // The actual value
-  isSecret  Boolean  @default(false) // To mask in UI
-  updatedAt DateTime @updatedAt
+  id          String   @id @default(cuid())
+  key         String   @unique // e.g., 'llm_provider', 'openai_api_key'
+  value       String   // The actual value (encrypted if isSecret)
+  isSecret    Boolean  @default(false) // To mask in UI and encrypt in storage
+  category    String   @default("general") // general, llm, security, notifications
+  description String?
+  updatedAt   DateTime @updatedAt
+  updatedBy   String?  // User ID who last updated
+}
+
+model ApiUsageLog {
+  id              String   @id @default(cuid())
+  provider        String   // openai, anthropic, gemini, groq, mock
+  endpoint        String   // API endpoint called
+  requestSize     Int      // Size of request in bytes
+  responseSize    Int?     // Size of response in bytes
+  statusCode      Int?     // HTTP status code
+  success         Boolean  // Whether the call succeeded
+  errorMessage    String?  // Error message if failed
+  duration        Int      // Duration in milliseconds
+  submissionId    String?  // Related submission if applicable
+  createdAt       DateTime @default(now())
 }

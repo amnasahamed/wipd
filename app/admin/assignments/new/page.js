@@ -18,7 +18,7 @@ export default function NewAssignmentPage() {
         title: "",
         writerId: "",
         category: "",
-        brief: "",
+        description: "",
         wordCount: "",
         citationStyle: "",
         deadline: "",
@@ -60,7 +60,7 @@ export default function NewAssignmentPage() {
         if (!formData.title.trim()) newErrors.title = "Title is required";
         if (!formData.writerId) newErrors.writerId = "Please select a writer";
         if (!formData.category) newErrors.category = "Please select a category";
-        if (!formData.brief.trim()) newErrors.brief = "Brief is required";
+        if (!formData.description.trim()) newErrors.description = "Description is required";
         if (!formData.wordCount) newErrors.wordCount = "Word count is required";
         if (!formData.deadline) newErrors.deadline = "Deadline is required";
         setErrors(newErrors);

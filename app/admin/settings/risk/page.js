@@ -1,12 +1,11 @@
 "use client";
 
-import { useState } from "react";
-import Link from "next/link";
+import { useState, useEffect } from "react";
 import styles from "../../admin.module.css";
 import settingsStyles from "./settings.module.css";
 
-// Mock risk thresholds
-const defaultThresholds = {
+// Default risk thresholds
+const DEFAULT_THRESHOLDS = {
     styleMatch: { low: 80, medium: 60 },
     aiRisk: { low: 20, medium: 50 },
     similarity: { low: 15, medium: 35 },
@@ -14,9 +13,44 @@ const defaultThresholds = {
 };
 
 export default function RiskSettingsPage() {
-    const [thresholds, setThresholds] = useState(defaultThresholds);
+    const [thresholds, setThresholds] = useState(DEFAULT_THRESHOLDS);
+    const [originalThresholds, setOriginalThresholds] = useState(DEFAULT_THRESHOLDS);
     const [isSaving, setIsSaving] = useState(false);
-    const [showSaved, setShowSaved] = useState(false);
+    const [isLoading, setIsLoading] = useState(true);
+    const [saveMessage, setSaveMessage] = useState(null);
+
+    useEffect(() => {
+        fetchSettings();
+    }, []);
+
+    const fetchSettings = async () => {
+        try {
+            const res = await fetch('/api/admin/config');
+            const data = await res.json();
+
+            if (data.success) {
+                const config = data.config;
+                const loadedThresholds = {
+                    styleMatch: {
+                        low: parseInt(config.integrity_threshold_medium) || 80,
+                        medium: parseInt(config.integrity_threshold_low) || 60
+                    },
+                    aiRisk: {
+                        low: parseInt(config.risk_threshold_medium) || 20,
+                        medium: parseInt(config.risk_threshold_high) || 50
+                    },
+                    similarity: { low: 15, medium: 35 },
+                    citations: { low: 80, medium: 60 }
+                };
+                setThresholds(loadedThresholds);
+                setOriginalThresholds(loadedThresholds);
+            }
+        } catch (err) {
+            console.error('Error fetching settings:', err);
+        } finally {
+            setIsLoading(false);
+        }
+    };
 
     const handleThresholdChange = (metric, level, value) => {
         setThresholds((prev) => ({
@@ -27,17 +61,57 @@ export default function RiskSettingsPage() {
 
     const handleSave = async () => {
         setIsSaving(true);
-        await new Promise((resolve) => setTimeout(resolve, 1000));
-        setIsSaving(false);
-        setShowSaved(true);
-        setTimeout(() => setShowSaved(false), 3000);
+        setSaveMessage(null);
+
+        try {
+            // Map UI thresholds to config keys
+            const settings = {
+                risk_threshold_high: thresholds.aiRisk.medium.toString(),
+                risk_threshold_medium: thresholds.aiRisk.low.toString(),
+                integrity_threshold_low: thresholds.styleMatch.medium.toString(),
+                integrity_threshold_medium: thresholds.styleMatch.low.toString(),
+            };
+
+            const res = await fetch('/api/admin/config', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ settings })
+            });
+
+            const data = await res.json();
+
+            if (data.success) {
+                setSaveMessage({ type: 'success', text: 'Settings saved successfully' });
+                setOriginalThresholds(thresholds);
+            } else {
+                setSaveMessage({ type: 'error', text: data.error || 'Failed to save settings' });
+            }
+        } catch (err) {
+            setSaveMessage({ type: 'error', text: 'Error saving settings: ' + err.message });
+        } finally {
+            setIsSaving(false);
+            setTimeout(() => setSaveMessage(null), 5000);
+        }
     };
 
     const handleReset = () => {
-        setThresholds(defaultThresholds);
+        setThresholds(DEFAULT_THRESHOLDS);
     };
 
-    return (
+    const hasChanges = () => {
+        return JSON.stringify(thresholds) !== JSON.stringify(originalThresholds);
+    };
+
+    if (isLoading) {
+        return (
+            <main className={styles.adminMain}>
+                <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '400px' }}>
+                    <div className={styles.loadingSpinner}>Loading configuration...</div>
+                </div>
+            </main>
+        );
+    }
+
     return (
         <main className={styles.adminMain}>
             <div className={styles.pageHeader}>
@@ -47,19 +121,22 @@ export default function RiskSettingsPage() {
                         Configure thresholds for automatic risk classification.
                     </p>
                 </div>
-                <div className={styles.pageActions}>
+                <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+                    {saveMessage && (
+                        <span className={`${styles.alert} ${saveMessage.type === 'success' ? styles.alertSuccess : styles.alertError}`}>
+                            {saveMessage.text}
+                        </span>
+                    )}
                     <button className="btn btn-secondary" onClick={handleReset}>Reset Defaults</button>
-                    <button className="btn btn-primary" onClick={handleSave} disabled={isSaving}>
-                        {isSaving ? "Saving..." : "Save Changes"}
+                    <button
+                        className="btn btn-primary"
+                        onClick={handleSave}
+                        disabled={isSaving || !hasChanges()}
+                    >
+                        {isSaving ? "Saving..." : hasChanges() ? "Save Changes" : "No Changes"}
                     </button>
                 </div>
             </div>
-
-            {showSaved && (
-                <div className={settingsStyles.savedNotice}>
-                    ✓ Settings saved successfully
-                </div>
-            )}
 
             {/* Explanation Card */}
             <div className={settingsStyles.explanationCard}>
@@ -68,9 +145,9 @@ export default function RiskSettingsPage() {
                     Each submission is analyzed across multiple metrics. The overall risk level is determined by:
                 </p>
                 <ul>
-                    <li><span className={settingsStyles.riskLow}>LOW RISK</span> — All metrics exceed the "low" threshold</li>
+                    <li><span className={settingsStyles.riskLow}>LOW RISK</span> — All metrics exceed the &quot;low&quot; threshold</li>
                     <li><span className={settingsStyles.riskMedium}>MEDIUM RISK</span> — Any metric falls between thresholds</li>
-                    <li><span className={settingsStyles.riskHigh}>HIGH RISK</span> — Any metric falls below the "medium" threshold</li>
+                    <li><span className={settingsStyles.riskHigh}>HIGH RISK</span> — Any metric falls below the &quot;medium&quot; threshold</li>
                 </ul>
             </div>
 
@@ -86,7 +163,7 @@ export default function RiskSettingsPage() {
                         </div>
                         <div>
                             <h4>Style Match</h4>
-                            <p>Compares writing style to writer's baseline</p>
+                            <p>Compares writing style to writer&apos;s baseline</p>
                         </div>
                     </div>
                     <div className={settingsStyles.thresholdInputs}>

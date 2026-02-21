@@ -4,13 +4,14 @@ import { requireAdmin } from '@/lib/auth/session';
 
 export async function POST(request, { params }) {
     try {
-        const { user: admin, errorResponse } = await requireAdmin();
+        // CRITICAL FIX: Add admin authentication
+        const { user: sessionUser, errorResponse } = await requireAdmin();
         if (errorResponse) return errorResponse;
 
         const { id } = await params;
 
-        // Update profile status to ACTIVE
-        const applicant = await prisma.user.findUnique({
+        // Get user and profile first
+        const user = await prisma.user.findUnique({
             where: { id },
             include: { profile: true }
         });
@@ -22,20 +23,29 @@ export async function POST(request, { params }) {
             );
         }
 
-        await prisma.profile.update({
-            where: { id: applicant.profile.id },
-            data: { status: 'ACTIVE' }
-        });
+        const previousStatus = user.profile.status;
 
-        // Create audit log
-        await prisma.auditLog.create({
-            data: {
-                userId: admin.id,
-                entityType: 'APPLICATION',
-                entityId: id,
-                action: 'APPROVE',
-                details: JSON.stringify({ previousStatus: applicant.profile.status })
-            }
+        // Use transaction to ensure both operations succeed or fail together
+        await prisma.$transaction(async (tx) => {
+            // Update profile status to ACTIVE
+            await tx.profile.update({
+                where: { id: user.profile.id },
+                data: { status: 'ACTIVE' }
+            });
+
+            // Create audit log with admin ID
+            await tx.auditLog.create({
+                data: {
+                    userId: sessionUser.id,
+                    entityType: 'APPLICATION',
+                    entityId: id,
+                    action: 'APPROVE',
+                    details: JSON.stringify({
+                        previousStatus,
+                        approvedBy: sessionUser.id
+                    })
+                }
+            });
         });
 
         return NextResponse.json({ success: true });

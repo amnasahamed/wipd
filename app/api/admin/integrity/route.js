@@ -32,7 +32,7 @@ export async function GET(request) {
                 assignment: {
                     select: {
                         title: true,
-                        // category? Schema checks needed. Assuming generic 'academic' for now if missing.
+                        category: true,
                     }
                 },
                 analysisResults: true
@@ -75,7 +75,7 @@ export async function GET(request) {
                     avatar: (sub.writer?.fullName || 'U').charAt(0).toUpperCase()
                 },
                 assignment: sub.assignment?.title || 'Untitled Assignment',
-                category: 'Standard', // Schema doesn't have category on Assignment yet?
+                category: sub.assignment?.category || 'Standard',
                 submittedAt: sub.createdAt,
                 status: sub.status.toLowerCase(),
                 integrityReport: {

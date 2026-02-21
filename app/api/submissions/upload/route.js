@@ -20,6 +20,32 @@ export async function POST(request) {
             return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
         }
 
+        // SECURITY FIX: File size validation (10MB limit)
+        const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+        if (file.size > MAX_FILE_SIZE) {
+            return NextResponse.json(
+                { error: `File too large. Maximum size is ${MAX_FILE_SIZE / 1024 / 1024}MB` },
+                { status: 413 }
+            );
+        }
+
+        // SECURITY FIX: File type validation
+        const allowedTypes = [
+            'application/vnd.openxmlformats-officedocument.wordprocessingml.document', // .docx
+            'text/plain', // .txt
+            'application/msword', // .doc
+        ];
+        const allowedExtensions = ['.docx', '.txt', '.doc'];
+        const fileName = file.name?.toLowerCase() || '';
+        const hasValidExtension = allowedExtensions.some(ext => fileName.endsWith(ext));
+        
+        if (!allowedTypes.includes(file.type) && !hasValidExtension) {
+            return NextResponse.json(
+                { error: `Invalid file type. Allowed types: ${allowedExtensions.join(', ')}` },
+                { status: 415 }
+            );
+        }
+
         if (writerIdFromBody && writerIdFromBody !== writerUserId) {
             return NextResponse.json({ error: "Forbidden" }, { status: 403 });
         }
@@ -79,13 +105,21 @@ export async function POST(request) {
         let signals = [];
 
         if (profile.baselineMetrics && currentMetrics) {
-            const baseline = JSON.parse(profile.baselineMetrics);
-            integrityScore = compareStyles(baseline, currentMetrics);
+            let baseline = null;
+            try {
+                baseline = JSON.parse(profile.baselineMetrics);
+            } catch (e) {
+                console.error('Error parsing baseline metrics:', e);
+                baseline = null;
+            }
+            if (baseline) {
+                integrityScore = compareStyles(baseline, currentMetrics);
 
-            if (integrityScore < 70) {
-                signals.push({ type: 'warning', message: `Style Mismatch detected (Score: ${integrityScore}%)` });
-            } else {
-                signals.push({ type: 'positive', message: `Style matches baseline (Score: ${integrityScore}%)` });
+                if (integrityScore < 70) {
+                    signals.push({ type: 'warning', message: `Style Mismatch detected (Score: ${integrityScore}%)` });
+                } else {
+                    signals.push({ type: 'positive', message: `Style matches baseline (Score: ${integrityScore}%)` });
+                }
             }
         } else {
             signals.push({ type: 'neutral', message: 'No baseline established for comparison' });

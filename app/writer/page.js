@@ -149,6 +149,7 @@ function DashboardContent({ user, userLoading }) {
                             </button>
                         </div>
                     </div>
+                    <LogoutButton />
                 </div>
             )}
 

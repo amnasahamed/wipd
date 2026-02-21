@@ -12,12 +12,30 @@ export async function POST(request) {
             return NextResponse.json({ error: 'Email is required' }, { status: 400 });
         }
 
+        // SECURITY FIX: Email format validation
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(email)) {
+            return NextResponse.json({ error: 'Invalid email format' }, { status: 400 });
+        }
+
         if (!password) {
             return NextResponse.json({ error: 'Password is required' }, { status: 400 });
         }
 
         if (password.length < 8) {
             return NextResponse.json({ error: 'Password must be at least 8 characters' }, { status: 400 });
+        }
+
+        // SECURITY FIX: Password strength validation
+        const hasUpperCase = /[A-Z]/.test(password);
+        const hasLowerCase = /[a-z]/.test(password);
+        const hasNumbers = /\d/.test(password);
+        const hasSpecialChar = /[!@#$%^&*(),.?":{}|<>]/.test(password);
+        
+        if (!hasUpperCase || !hasLowerCase || !hasNumbers) {
+            return NextResponse.json({
+                error: 'Password must contain at least one uppercase letter, one lowercase letter, and one number'
+            }, { status: 400 });
         }
 
         // Check if user exists
@@ -72,7 +90,8 @@ export async function POST(request) {
             httpOnly: true,
             path: '/',
             maxAge: 60 * 60 * 24 * 7, // 1 week
-            sameSite: 'strict'
+            sameSite: 'strict',
+            secure: process.env.NODE_ENV === 'production'
         });
 
         return NextResponse.json({

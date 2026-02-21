@@ -116,9 +116,14 @@ export default function ApplicationDetailPage() {
         );
     }
 
-    const workTypes = application.workTypes ?
-        (typeof application.workTypes === 'string' ? JSON.parse(application.workTypes) : application.workTypes)
-        : [];
+    let workTypes = [];
+    try {
+        workTypes = application.workTypes ?
+            (typeof application.workTypes === 'string' ? JSON.parse(application.workTypes) : application.workTypes)
+            : [];
+    } catch {
+        workTypes = [];
+    }
 
     return (
     return (

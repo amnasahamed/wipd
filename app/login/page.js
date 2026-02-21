@@ -10,10 +10,39 @@ export default function LoginPage() {
     const [password, setPassword] = useState("");
     const [role, setRole] = useState("writer");
     const [isLoading, setIsLoading] = useState(false);
+    const [error, setError] = useState("");
     const router = useRouter();
+
+    // Email validation regex
+    const isValidEmail = (email) => {
+        return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+    };
 
     const handleLogin = async (e) => {
         e.preventDefault();
+        setError("");
+
+        // Client-side validation
+        if (!email.trim()) {
+            setError("Email is required");
+            return;
+        }
+
+        if (!isValidEmail(email)) {
+            setError("Please enter a valid email address");
+            return;
+        }
+
+        if (!password) {
+            setError("Password is required");
+            return;
+        }
+
+        if (password.length < 8) {
+            setError("Password must be at least 8 characters");
+            return;
+        }
+
         setIsLoading(true);
 
         try {
@@ -26,6 +55,16 @@ export default function LoginPage() {
             const data = await res.json();
 
             if (data.success) {
+                // Verify role matches selection (security check)
+                const userRole = data.user.role.toLowerCase();
+                const selectedRole = role.toLowerCase();
+                
+                if (userRole !== selectedRole) {
+                    setError(`This account is a ${data.user.role}, not a ${role}. Please select the correct role.`);
+                    setIsLoading(false);
+                    return;
+                }
+
                 // Redirect based on role
                 if (data.user.role === 'ADMIN') {
                     router.push("/admin");
@@ -33,11 +72,11 @@ export default function LoginPage() {
                     router.push("/writer");
                 }
             } else {
-                alert(data.error || 'Login failed');
+                setError(data.error || 'Invalid email or password');
             }
         } catch (err) {
             console.error('Login error:', err);
-            alert('An error occurred during login');
+            setError('Network error. Please try again.');
         } finally {
             setIsLoading(false);
         }
@@ -70,6 +109,20 @@ export default function LoginPage() {
                         </button>
                     </div>
 
+                    {error && (
+                        <div className={styles.errorMessage} style={{
+                            background: '#fee2e2',
+                            color: '#dc2626',
+                            padding: '12px 16px',
+                            borderRadius: '8px',
+                            fontSize: '14px',
+                            marginBottom: '16px',
+                            border: '1px solid #fecaca'
+                        }}>
+                            ⚠️ {error}
+                        </div>
+                    )}
+
                     <div className={styles.inputGroup}>
                         <label>Email Address</label>
                         <input
@@ -77,7 +130,8 @@ export default function LoginPage() {
                             placeholder="name@company.com"
                             value={email}
                             onChange={(e) => setEmail(e.target.value)}
-                            required
+                            disabled={isLoading}
+                            autoComplete="email"
                         />
                     </div>
 
@@ -88,19 +142,43 @@ export default function LoginPage() {
                             placeholder="••••••••"
                             value={password}
                             onChange={(e) => setPassword(e.target.value)}
-                            required
+                            disabled={isLoading}
+                            autoComplete="current-password"
                         />
                     </div>
 
                     <div className={styles.formOptions}>
                         <label className={styles.rememberMe}>
-                            <input type="checkbox" /> Remember me
+                            <input type="checkbox" disabled={isLoading} /> Remember me
                         </label>
-                        <Link href="#" className={styles.forgotPassword}>Forgot password?</Link>
+                        <Link href="#" className={styles.forgotPassword} onClick={(e) => {
+                            e.preventDefault();
+                            alert('Please contact your administrator to reset your password.');
+                        }}>Forgot password?</Link>
                     </div>
 
-                    <button type="submit" className={styles.loginButton} disabled={isLoading}>
-                        {isLoading ? "Signing in..." : "Sign In"}
+                    <button 
+                        type="submit" 
+                        className={styles.loginButton} 
+                        disabled={isLoading}
+                        style={{ opacity: isLoading ? 0.7 : 1 }}
+                    >
+                        {isLoading ? (
+                            <>
+                                <span className={styles.spinner} style={{
+                                    display: 'inline-block',
+                                    width: '16px',
+                                    height: '16px',
+                                    border: '2px solid #ffffff',
+                                    borderTopColor: 'transparent',
+                                    borderRadius: '50%',
+                                    animation: 'spin 1s linear infinite',
+                                    marginRight: '8px',
+                                    verticalAlign: 'middle'
+                                }}></span>
+                                Signing in...
+                            </>
+                        ) : "Sign In"}
                     </button>
                 </form>
 
@@ -108,6 +186,12 @@ export default function LoginPage() {
                     Don't have an account? <Link href="/onboarding">Get started</Link>
                 </div>
             </div>
+            
+            <style jsx>{`
+                @keyframes spin {
+                    to { transform: rotate(360deg); }
+                }
+            `}</style>
         </div>
     );
 }

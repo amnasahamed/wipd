@@ -116,7 +116,12 @@ export default function WriterDetailPage({ params }) {
     );
 
     const { profile } = writer;
-    const workTypes = profile.workTypes ? JSON.parse(profile.workTypes) : [];
+    let workTypes = [];
+    try {
+        workTypes = profile.workTypes ? JSON.parse(profile.workTypes) : [];
+    } catch {
+        workTypes = [];
+    }
 
     return (
         <main className={styles.adminMain}>

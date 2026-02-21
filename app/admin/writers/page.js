@@ -148,9 +148,9 @@ export default function WritersPage() {
                                             <td>
                                                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                                                     <div style={{ width: '80px', height: '6px', background: '#e2e8f0', borderRadius: '3px' }}>
-                                                        <div style={{ width: `${writer.grammarScore || 0}%`, height: '100%', background: writer.grammarScore >= 80 ? '#22c55e' : '#f59e0b', borderRadius: '3px' }}></div>
+                                                        <div style={{ width: `${writer.stats?.avgStyleMatch || 0}%`, height: '100%', background: (writer.stats?.avgStyleMatch || 0) >= 80 ? '#22c55e' : '#f59e0b', borderRadius: '3px' }}></div>
                                                     </div>
-                                                    <span style={{ fontSize: '12px', fontWeight: 600, color: '#475569' }}>{writer.grammarScore}%</span>
+                                                    <span style={{ fontSize: '12px', fontWeight: 600, color: '#475569' }}>{writer.stats?.avgStyleMatch || 0}%</span>
                                                 </div>
                                             </td>
                                             <td>
